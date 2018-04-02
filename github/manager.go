@@ -23,11 +23,11 @@ func New(githubAccessToken string) (*githubManager) {
 	return &githubManager{Context: ctx, Client: client}
 }
 
-func (gm *githubManager) GetFirstParentCommits(owner, repo string, lastCommitsNumber int) ([]*github.RepositoryCommit, error) {
+func (gm *githubManager) GetCommits(owner, repo string, lastCommitsNumber int) ([]*github.RepositoryCommit, error) {
 	client := gm.Client
 	ctx := gm.Context
 
-	var fullCommitsList []*github.RepositoryCommit;
+	var fullCommitsList []*github.RepositoryCommit
 	commitsLeft := lastCommitsNumber
 	pageNumber := 1
 	for commitsLeft > 0 {
@@ -49,7 +49,33 @@ func (gm *githubManager) GetFirstParentCommits(owner, repo string, lastCommitsNu
 		commitsLeft -= commitsAmountToGetThisTime
 	}
 
-	// TODO: remove commits which are pointed by some parents and its parents and its parents... -- basicly implement --first-parent logic here from git log command
-
 	return fullCommitsList, nil
+}
+
+func PickFirstParentCommits(fullCommitsList []*github.RepositoryCommit) ([]*github.RepositoryCommit) {
+	var firstParentCommits []*github.RepositoryCommit
+	if 0 == len(fullCommitsList) {
+		return firstParentCommits
+	}
+
+	fullCommitsMap := make(map[string]*github.RepositoryCommit)
+	for _, c := range fullCommitsList {
+		fullCommitsMap[c.GetSHA()] = c
+	}
+
+	sha := fullCommitsList[0].GetSHA() // HEAD
+	for {
+		c, exists := fullCommitsMap[sha]
+		if !exists {
+			break // last commit received from repo has a parent but parent doesnt exist in map
+		}
+
+		firstParentCommits = append(firstParentCommits, c)
+		if 0 == len(c.Parents) {
+			break // initial commit
+		}
+		sha = c.Parents[0].GetSHA()
+	}
+
+	return firstParentCommits
 }
