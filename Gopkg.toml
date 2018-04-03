@@ -36,3 +36,7 @@
 [[constraint]]
   branch = "master"
   name = "github.com/shurcooL/githubql"
+
+[[constraint]]
+  name = "github.com/google/go-github"
+  version = "15.0.0"

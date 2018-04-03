@@ -1,7 +1,8 @@
 package github
 
 type Error struct {
-	Message string
+	Message       string
+	PreviousError error
 }
 
 func (e Error) Error() (string) {

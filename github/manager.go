@@ -4,11 +4,14 @@ import (
 	"golang.org/x/oauth2"
 	"golang.org/x/net/context"
 	"github.com/shurcooL/githubql"
+	"github.com/google/go-github/github"
+	"net/http"
 )
 
 type githubManager struct {
-	Context context.Context
-	Client  *githubql.Client
+	Context    context.Context
+	Client     *githubql.Client
+	HttpClient *http.Client
 }
 
 func New(githubAccessToken string) (*githubManager) {
@@ -19,7 +22,7 @@ func New(githubAccessToken string) (*githubManager) {
 	httpClient := oauth2.NewClient(ctx, src)
 	client := githubql.NewClient(httpClient)
 
-	return &githubManager{Context: ctx, Client: client}
+	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
 }
 
 func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int) ([]Commit, error) {
@@ -72,6 +75,26 @@ func PickFirstParentCommits(fullCommitsList []Commit) ([]Commit) {
 	return firstParentCommits
 }
 
+// TODO remove v3 client when implemented in v4
+func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force bool) (error) {
+	httpClient := gm.HttpClient
+
+	client := github.NewClient(httpClient)
+	ref, _, err := client.Git.GetRef(gm.Context, owner, repo, "heads/"+branch)
+	if nil != err {
+		return &Error{Message: "Can not update branch head because: " + err.Error(), PreviousError: err}
+	}
+
+	ref.GetObject().SHA = &sha
+
+	ref, _, err = client.Git.UpdateRef(gm.Context, owner, repo, ref, force)
+	if nil != err {
+		return &Error{Message: "Can not update branch head because: " + err.Error(), PreviousError: err}
+	}
+
+	return nil
+}
+
 func hydrateCommits(q *githubQuery) ([]Commit) {
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
@@ -87,6 +110,7 @@ func hydrateCommits(q *githubQuery) ([]Commit) {
 			Message:       string(edge.Node.Message),
 			Parents:       parents,
 			StatusSuccess: bool(edge.Node.Status.State == githubql.String(githubql.StatusStateSuccess)),
+			PushedDate:    edge.Node.PushedDate.Time,
 		})
 	}
 

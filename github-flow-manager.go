@@ -15,7 +15,15 @@ func main() {
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
-	for _, c := range firstParentCommits {
-		fmt.Println(c.SHA, c.Message)
+	masterHead := firstParentCommits[0]
+
+	err = gm.ChangeBranchHead("DocPlanner", "github-flow-manager-test-repo", "test", masterHead.SHA, false)
+	if err != nil {
+		fmt.Println(err)
 	}
+
+
+	//for _, c := range firstParentCommits {
+	//	fmt.Println(c.SHA, c.Message)
+	//}
 }
