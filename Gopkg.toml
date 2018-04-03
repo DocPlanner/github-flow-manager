@@ -30,9 +30,9 @@
   unused-packages = true
 
 [[constraint]]
-  name = "github.com/google/go-github"
-  version = "15.0.0"
+  branch = "master"
+  name = "golang.org/x/oauth2"
 
 [[constraint]]
   branch = "master"
-  name = "golang.org/x/oauth2"
+  name = "github.com/shurcooL/githubql"

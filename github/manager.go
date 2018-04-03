@@ -2,80 +2,93 @@ package github
 
 import (
 	"golang.org/x/oauth2"
-	"github.com/google/go-github/github"
 	"golang.org/x/net/context"
+	"github.com/shurcooL/githubql"
 )
 
 type githubManager struct {
 	Context context.Context
-	Client  *github.Client
+	Client  *githubql.Client
 }
 
 func New(githubAccessToken string) (*githubManager) {
 	ctx := context.Background()
-	ts := oauth2.StaticTokenSource(
+	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
 	)
-	tc := oauth2.NewClient(ctx, ts)
-
-	client := github.NewClient(tc)
+	httpClient := oauth2.NewClient(ctx, src)
+	client := githubql.NewClient(httpClient)
 
 	return &githubManager{Context: ctx, Client: client}
 }
 
-func (gm *githubManager) GetCommits(owner, repo string, lastCommitsNumber int) ([]*github.RepositoryCommit, error) {
-	client := gm.Client
-	ctx := gm.Context
-
-	var fullCommitsList []*github.RepositoryCommit
-	commitsLeft := lastCommitsNumber
-	pageNumber := 1
-	for commitsLeft > 0 {
-		commitsAmountToGetThisTime := commitsLeft
-		if commitsLeft > 100 {
-			commitsAmountToGetThisTime = 100
-		}
-
-		commits, _, err := client.Repositories.ListCommits(ctx, owner, repo, &github.CommitsListOptions{ListOptions: github.ListOptions{Page: pageNumber, PerPage: commitsAmountToGetThisTime}})
-		if nil != err {
-			return nil, err
-		}
-
-		for _, element := range commits {
-			fullCommitsList = append(fullCommitsList, element)
-		}
-
-		pageNumber++
-		commitsLeft -= commitsAmountToGetThisTime
+func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int) ([]Commit, error) {
+	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
+		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
 
-	return fullCommitsList, nil
+	q := &githubQuery{}
+
+	client := gm.Client
+	err := client.Query(gm.Context, &q, map[string]interface{}{
+		"owner":         githubql.String(owner),
+		"name":          githubql.String(repo),
+		"branch":        githubql.String(branch),
+		"commitsNumber": githubql.Int(lastCommitsNumber),
+		"parentsNumber": githubql.Int(1),
+	})
+	if nil != err {
+		return nil, err
+	}
+
+	return hydrateCommits(q), nil
 }
 
-func PickFirstParentCommits(fullCommitsList []*github.RepositoryCommit) ([]*github.RepositoryCommit) {
-	var firstParentCommits []*github.RepositoryCommit
+func PickFirstParentCommits(fullCommitsList []Commit) ([]Commit) {
+	var firstParentCommits []Commit
 	if 0 == len(fullCommitsList) {
 		return firstParentCommits
 	}
 
-	fullCommitsMap := make(map[string]*github.RepositoryCommit)
+	fullCommitsMap := make(map[string]Commit)
 	for _, c := range fullCommitsList {
-		fullCommitsMap[c.GetSHA()] = c
+		fullCommitsMap[c.SHA] = c
 	}
 
-	sha := fullCommitsList[0].GetSHA() // HEAD
+	sha := fullCommitsList[0].SHA // HEAD
 	for {
 		c, exists := fullCommitsMap[sha]
 		if !exists {
-			break // last commit received from repo has a parent but parent doesnt exist in map
+			break // last commit received from repo has a parent but parent doesn't exist in map
 		}
 
 		firstParentCommits = append(firstParentCommits, c)
 		if 0 == len(c.Parents) {
 			break // initial commit
 		}
-		sha = c.Parents[0].GetSHA()
+		sha = c.Parents[0].SHA
 	}
 
 	return firstParentCommits
+}
+
+func hydrateCommits(q *githubQuery) ([]Commit) {
+	var fullCommitsList []Commit
+	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
+		var parents []Commit
+		for _, parent := range edge.Node.Parents.Edges {
+			parents = append(parents, Commit{
+				SHA:     string(parent.Node.Oid),
+				Message: string(parent.Node.Message),
+			})
+		}
+		fullCommitsList = append(fullCommitsList, Commit{
+			SHA:           string(edge.Node.Oid),
+			Message:       string(edge.Node.Message),
+			Parents:       parents,
+			StatusSuccess: bool(edge.Node.Status.State == githubql.String(githubql.StatusStateSuccess)),
+		})
+	}
+
+	return fullCommitsList
 }

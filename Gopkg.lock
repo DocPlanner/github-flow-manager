@@ -9,6 +9,28 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/shurcooL/githubql"
+  packages = ["."]
+  revision = "d8297a7d5a840a2105de3f27796a6876d03b5da1"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shurcooL/go"
+  packages = ["ctxhttp"]
+  revision = "364c5ae8518b51f5fda954762864d6f4d5c30c89"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/shurcooL/graphql"
+  packages = [
+    ".",
+    "ident",
+    "internal/jsonutil"
+  ]
+  revision = "3d276b9dcc6b1e0adf19557a8de5cb8632c07697"
+
+[[projects]]
+  branch = "master"
   name = "golang.org/x/net"
   packages = [
     "context",
@@ -42,6 +64,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "60c2a412589bf6f2c8e696237139959af79f898ec9304ff715e5d7a94f5453c5"
+  inputs-digest = "f50845b1be764ddccdccdeeda094e9ab9f78f2cfff04a2c4db3b9ac865ef3591"
   solver-name = "gps-cdcl"
   solver-version = 1

@@ -8,10 +8,14 @@ import (
 
 func main() {
 	gm := github.New(os.Getenv("GITHUB_TOKEN"))
-	commits, _ := gm.GetCommits("DocPlanner", "github-flow-manager-test-repo", 10)
+	commits, err := gm.GetCommits("DocPlanner", "github-flow-manager-test-repo", "master", 10)
+	if nil != err {
+		fmt.Println(err)
+		panic("")
+	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
 	for _, c := range firstParentCommits {
-		fmt.Println(c.GetSHA(), c.GetCommit().GetMessage())
+		fmt.Println(c.SHA, c.Message)
 	}
 }
