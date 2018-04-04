@@ -40,3 +40,15 @@
 [[constraint]]
   name = "github.com/google/go-github"
   version = "15.0.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/araddon/qlbridge"
+
+[[constraint]]
+  name = "github.com/spf13/cobra"
+  version = "0.0.2"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/olekukonko/tablewriter"
