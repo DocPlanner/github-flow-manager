@@ -1,0 +1,13 @@
+builds:
+  - binary: github-flow-manager
+    env:
+      - CGO_ENABLED=0
+    ldflags: -w -extldflags "-static"
+    goos:
+      - windows
+      - darwin
+      - linux
+    goarch:
+      - amd64
+dockers:
+  - image: docplanner/github-flow-manager
