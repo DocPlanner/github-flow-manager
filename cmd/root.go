@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/spf13/cobra"
-	"strings"
 	"github-flow-manager/flow-manager"
 	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
+	"strings"
 	"time"
 )
 
@@ -52,7 +52,9 @@ Example use case "push all commits pushed to branch develop more than 30 minutes
 
 		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBrnach, expression, *commitsNumber, *force, *dryRun)
 		if nil != err {
-			panic(err.Error())
+			fmt.Println(err.Error())
+			os.Exit(1)
+			return
 		}
 
 		if !*verbose {
