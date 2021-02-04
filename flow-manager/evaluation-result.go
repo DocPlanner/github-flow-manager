@@ -1,6 +1,6 @@
 package flow_manager
 
-import "github-flow-manager/github"
+import "github.com/Docplanner/github-flow-manager/github"
 
 type evaluationResult struct {
 	Commit github.Commit

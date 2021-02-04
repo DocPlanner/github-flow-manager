@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github-flow-manager/cmd"
+	"github.com/Docplanner/github-flow-manager/cmd"
 )
 
 func main() {

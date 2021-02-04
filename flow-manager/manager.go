@@ -1,11 +1,11 @@
 package flow_manager
 
 import (
-	"github-flow-manager/github"
-	"github.com/araddon/qlbridge/expr/builtins"
+	"github.com/Docplanner/github-flow-manager/github"
 	"github.com/araddon/qlbridge/datasource"
-	"github.com/araddon/qlbridge/vm"
 	"github.com/araddon/qlbridge/expr"
+	"github.com/araddon/qlbridge/expr/builtins"
+	"github.com/araddon/qlbridge/vm"
 )
 
 func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, lastCommitsNumber int, force, dryRun bool) ([]evaluationResult, error) {

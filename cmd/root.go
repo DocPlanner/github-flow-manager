@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github-flow-manager/flow-manager"
+	"github.com/Docplanner/github-flow-manager/flow-manager"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"strings"
