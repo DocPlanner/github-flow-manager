@@ -17,7 +17,7 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
-	//destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1)
+	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1)
 	if nil != err {
 		return nil, err
 	}
@@ -26,9 +26,10 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 	builtins.LoadAllBuiltins()
 	for _, commit := range firstParentCommits {
 
-		// if destinationCommits[0] == commit {
-
-		// }
+		if destinationCommits[0].SHA == commit.SHA {
+			print("Hello! ;)")
+			return evaluationResultList,nil
+		}
 
 		evalContext := datasource.NewContextSimpleNative(map[string]interface{}{
 			"SHA":           commit.SHA,

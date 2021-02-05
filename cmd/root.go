@@ -88,7 +88,7 @@ Example use case "push all commits pushed to branch develop more than 30 minutes
 
 		table.Render()
 
-		endingMessage := "THERE IS NO COMMITS PASSING EVALUATION"
+		endingMessage := "THERE ARE NO COMMITS PASSING EVALUATION"
 		if results[len(results)-1].Result {
 			endingMessage = "NO MORE COMMITS WERE EXAMINED BECAUSE LAST ONE EVALUATED SUCCESSFULLY"
 		}
