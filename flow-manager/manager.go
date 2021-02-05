@@ -17,9 +17,19 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
+	//destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1)
+	if nil != err {
+		return nil, err
+	}
+
 	var evaluationResultList []evaluationResult
 	builtins.LoadAllBuiltins()
 	for _, commit := range firstParentCommits {
+
+		// if destinationCommits[0] == commit {
+
+		// }
+
 		evalContext := datasource.NewContextSimpleNative(map[string]interface{}{
 			"SHA":           commit.SHA,
 			"Message":       commit.Message,
@@ -34,10 +44,10 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 
 		if true == v {
 			if !dryRun {
-				err = gm.ChangeBranchHead(owner, repo, destinationBranch, commit.SHA, force)
-				if err != nil {
-					return nil, err
-				}
+				//err = gm.ChangeBranchHead(owner, repo, destinationBranch, commit.SHA, force)
+				// if err != nil {
+				// 	return nil, err
+				// }
 			}
 			break
 		}
