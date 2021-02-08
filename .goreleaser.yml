@@ -10,4 +10,5 @@ builds:
     goarch:
       - amd64
 dockers:
-  - image: docplanner/github-flow-manager
+  - image_templates:
+    - docplanner/github-flow-manager
