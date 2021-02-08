@@ -47,10 +47,10 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 
 		if true == v {
 			if !dryRun {
-				err = gm.ChangeBranchHead(owner, repo, destinationBranch, commit.SHA, force)
-				if err != nil {
-					return nil, err
-				}
+				//		err = gm.ChangeBranchHead(owner, repo, destinationBranch, commit.SHA, force)
+				//		if err != nil {
+				//			return nil, err
+				//		}
 			}
 			break
 		}

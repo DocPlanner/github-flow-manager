@@ -24,7 +24,13 @@ type githubQuery struct {
 								StatusCheckRollup struct {
 									State    githubql.String
 									Contexts struct {
-										TotalCount githubql.Int
+										Nodes []struct {
+											//Cursor   githubql.String
+											CheckRun struct {
+												Name       githubql.String
+												Conclusion githubql.String
+											} `graphql:"... on CheckRun"`
+										}
 									} `graphql:"contexts(first: $parentsNumber)"`
 								}
 							}

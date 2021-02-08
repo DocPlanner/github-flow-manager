@@ -1,6 +1,7 @@
 package github
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/google/go-github/github"
@@ -106,7 +107,12 @@ func hydrateCommits(q *githubQuery) []Commit {
 				Message: string(parent.Node.Message),
 			})
 		}
-
+		for _, contextEdge := range edge.Node.StatusCheckRollup.Contexts.Nodes {
+			fmt.Println(contextEdge.CheckRun.Name, contextEdge.CheckRun.Conclusion)
+			if contextEdge.CheckRun.Conclusion == githubql.String(githubql.StatusStateSuccess) && contextEdge.CheckRun.Name == "Pipeline-to-run-tests-connected-to-test-yaml" {
+				fmt.Println("Whatever")
+			}
+		}
 		fullCommitsList = append(fullCommitsList, Commit{
 			SHA:           string(edge.Node.Oid),
 			Message:       string(edge.Node.Message),
