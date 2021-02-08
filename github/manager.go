@@ -1,11 +1,12 @@
 package github
 
 import (
-	"golang.org/x/oauth2"
-	"golang.org/x/net/context"
-	"github.com/shurcooL/githubql"
-	"github.com/google/go-github/github"
 	"net/http"
+
+	"github.com/google/go-github/github"
+	"github.com/shurcooL/githubql"
+	"golang.org/x/net/context"
+	"golang.org/x/oauth2"
 )
 
 type githubManager struct {
@@ -14,7 +15,7 @@ type githubManager struct {
 	HttpClient *http.Client
 }
 
-func New(githubAccessToken string) (*githubManager) {
+func New(githubAccessToken string) *githubManager {
 	ctx := context.Background()
 	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
@@ -47,7 +48,7 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 	return hydrateCommits(q), nil
 }
 
-func PickFirstParentCommits(fullCommitsList []Commit) ([]Commit) {
+func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 	var firstParentCommits []Commit
 	if 0 == len(fullCommitsList) {
 		return firstParentCommits
@@ -76,7 +77,7 @@ func PickFirstParentCommits(fullCommitsList []Commit) ([]Commit) {
 }
 
 // TODO remove v3 client when implemented in v4
-func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force bool) (error) {
+func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force bool) error {
 	httpClient := gm.HttpClient
 
 	client := github.NewClient(httpClient)
@@ -95,7 +96,7 @@ func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force
 	return nil
 }
 
-func hydrateCommits(q *githubQuery) ([]Commit) {
+func hydrateCommits(q *githubQuery) []Commit {
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
 		var parents []Commit
@@ -105,11 +106,12 @@ func hydrateCommits(q *githubQuery) ([]Commit) {
 				Message: string(parent.Node.Message),
 			})
 		}
+
 		fullCommitsList = append(fullCommitsList, Commit{
 			SHA:           string(edge.Node.Oid),
 			Message:       string(edge.Node.Message),
 			Parents:       parents,
-			StatusSuccess: bool(edge.Node.Status.State == githubql.String(githubql.StatusStateSuccess)),
+			StatusSuccess: bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess)),
 			PushedDate:    edge.Node.PushedDate.Time,
 		})
 	}

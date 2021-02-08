@@ -18,12 +18,14 @@ type githubQuery struct {
 										}
 									}
 								} `graphql:"parents(first: $parentsNumber)"`
-								Oid        githubql.String
-								Message    githubql.String
-								PushedDate githubql.DateTime
-								Status struct {
-									Id    githubql.String
-									State githubql.String
+								Oid               githubql.String
+								Message           githubql.String
+								PushedDate        githubql.DateTime
+								StatusCheckRollup struct {
+									State    githubql.String
+									Contexts struct {
+										TotalCount githubql.Int
+									} `graphql:"contexts(first: $parentsNumber)"`
 								}
 							}
 						}
