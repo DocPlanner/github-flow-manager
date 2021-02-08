@@ -11,4 +11,5 @@ builds:
       - amd64
 dockers:
   - image_templates:
-    - docplanner/github-flow-manager
+    - "docplanner/github-flow-manager:latest"
+    - "docplanner/github-flow-manager:{{ .Tag }}"
