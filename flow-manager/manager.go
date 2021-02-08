@@ -1,6 +1,8 @@
 package flow_manager
 
 import (
+	"fmt"
+
 	"github.com/Docplanner/github-flow-manager/github"
 	"github.com/araddon/qlbridge/datasource"
 	"github.com/araddon/qlbridge/expr"
@@ -17,9 +19,20 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
+	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1)
+	if nil != err {
+		return nil, err
+	}
+
 	var evaluationResultList []evaluationResult
 	builtins.LoadAllBuiltins()
 	for _, commit := range firstParentCommits {
+
+		if destinationCommits[0].SHA == commit.SHA {
+			fmt.Println("COMMIT ID: " + commit.SHA + " IS ALREADY IN " + destinationBranch + " branch. EXITING THE PROCESS WITHOUT ANY ACTION.")
+			return evaluationResultList, nil
+		}
+
 		evalContext := datasource.NewContextSimpleNative(map[string]interface{}{
 			"SHA":           commit.SHA,
 			"Message":       commit.Message,
