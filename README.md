@@ -42,3 +42,25 @@ GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSucc
 `PushedDate < "now-30m"`
 ##### Commit was pushed more than 30 minutes ago and status is SUCCESS
 `PushedDate < "now-30m" AND StatusSuccess == true`
+
+## How to build
+
+You will need:
+* `goreleaser` binary
+* Github access using token
+* Docker image push access
+
+Check tags
+```
+git tag
+```
+
+Tag your changes
+```
+git tag -a v1.0.X -m "fix"
+```
+
+Release
+```
+GITHUB_TOKEN=821dhf9harnaszpuchy55a2a8s93ns goreleaser release
+```
