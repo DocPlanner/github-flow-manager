@@ -6,7 +6,7 @@ but just those which pass evaluation checks.
 Example use case "push all commits pushed to branch develop more than 30 minutes ago to branch master"
 
 Usage:
-  github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION] [flags]
+  github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION] [SPECIFIC_COMMIT_CHECK_NAME - Optional] [flags]
 
 Flags:
   -c, --commits-number int    Number of commits to get under evaluation (>0, <=100) (default 100)
@@ -18,8 +18,13 @@ Flags:
 ```
 
 ## Example
+- Evaluating commit status success based on the cumulative commit checks result
 ```
-GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" --verbose --dry-run
+GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
+```
+- Passing specific commit check name for the evaluation of the status success of the commit
+```
+GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
 ```
 
 # Expressions
