@@ -107,11 +107,9 @@ func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 			})
 		}
 
-		statusSuccess := bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess))
-
+		statusSuccess := false
 		// In case a commit check name is specified, it override and get priority over the commit cumulative status
 		if specificCheckName != "" {
-			statusSuccess = false
 			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
 				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
 					if githubql.String(specificCheckName) == checkRuns.Name {
@@ -119,6 +117,8 @@ func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 					}
 				}
 			}
+		} else {
+			statusSuccess = bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess))
 		}
 
 		fullCommitsList = append(fullCommitsList, Commit{
