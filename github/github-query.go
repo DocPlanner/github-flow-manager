@@ -27,6 +27,18 @@ type githubQuery struct {
 										TotalCount githubql.Int
 									} `graphql:"contexts(first: $parentsNumber)"`
 								}
+								CheckSuites struct {
+									Nodes []struct {
+										CheckRuns struct {
+											Nodes []struct {
+												Name       githubql.String
+												Status     githubql.String
+												Title      githubql.String
+												Conclusion githubql.String
+											}
+										} `graphql:"checkRuns(first: 100)"`
+									}
+								} `graphql:"checkSuites(first: 10)"`
 							}
 						}
 					} `graphql:"history(first: $commitsNumber)"`

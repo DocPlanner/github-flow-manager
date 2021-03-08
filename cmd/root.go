@@ -22,17 +22,22 @@ const SYMBOL_FAIL = "✖"
 
 var rootCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(5),
-	Use:   "github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION]",
+	Use:   "github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION] [SPECIFIC_COMMIT_CHECK_NAME]",
 	Short: "GitHub Flow Manager",
 	Long: `Main goal for that app is to push commits between branches
 but just those which pass evaluation checks. 
-Example use case "push all commits pushed to branch develop more than 30 minutes ago to branch master"`,
+Example use case "push all commits pushed to branch develop more than 30 minutes ago to branch master"
+If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculated based ONLY on the result of that specific commit check`,
 	Run: func(cmd *cobra.Command, args []string) {
 		owner := args[0]
 		repo := args[1]
 		sourceBranch := args[2]
-		destinationBrnach := args[3]
+		destinationBranch := args[3]
 		expression := strings.Join(args[4:], " ")
+		specificCheckName := ""
+		if len(args) > 5 {
+			specificCheckName = args[5]
+		}
 
 		for _, a := range args {
 			if len(a) < 1 {
@@ -50,7 +55,7 @@ Example use case "push all commits pushed to branch develop more than 30 minutes
 			}
 		}
 
-		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBrnach, expression, *commitsNumber, *force, *dryRun)
+		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificCheckName, *commitsNumber, *force, *dryRun)
 		if nil != err {
 			fmt.Println(err.Error())
 			os.Exit(1)

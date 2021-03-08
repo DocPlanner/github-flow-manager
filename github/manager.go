@@ -26,7 +26,7 @@ func New(githubAccessToken string) *githubManager {
 	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
 }
 
-func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int) ([]Commit, error) {
+func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificCheckName string) ([]Commit, error) {
 	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
 		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
@@ -45,7 +45,7 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 		return nil, err
 	}
 
-	return hydrateCommits(q), nil
+	return hydrateCommits(q, specificCheckName), nil
 }
 
 func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
@@ -96,7 +96,7 @@ func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force
 	return nil
 }
 
-func hydrateCommits(q *githubQuery) []Commit {
+func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
 		var parents []Commit
@@ -107,11 +107,25 @@ func hydrateCommits(q *githubQuery) []Commit {
 			})
 		}
 
+		statusSuccess := false
+		// In case a commit check name is specified, it override and get priority over the commit cumulative status
+		if specificCheckName != "" {
+			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
+				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
+					if githubql.String(specificCheckName) == checkRuns.Name {
+						statusSuccess = checkRuns.Conclusion == githubql.String(githubql.StatusStateSuccess)
+					}
+				}
+			}
+		} else {
+			statusSuccess = bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess))
+		}
+
 		fullCommitsList = append(fullCommitsList, Commit{
 			SHA:           string(edge.Node.Oid),
 			Message:       string(edge.Node.Message),
 			Parents:       parents,
-			StatusSuccess: bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess)),
+			StatusSuccess: statusSuccess,
 			PushedDate:    edge.Node.PushedDate.Time,
 		})
 	}
