@@ -4,12 +4,11 @@ import (
 	"fmt"
 	"os"
 
-	"strings"
-	"time"
-
-	flow_manager "github.com/Docplanner/github-flow-manager/flow-manager"
+	"github.com/Docplanner/github-flow-manager/flow-manager"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
+	"strings"
+	"time"
 )
 
 var commitsNumber *int
