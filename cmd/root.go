@@ -35,7 +35,10 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 		sourceBranch := args[2]
 		destinationBranch := args[3]
 		expression := strings.Join(args[4:], " ")
-		specificCheckName := args[5]
+		specificCheckName := ""
+		if len(args) > 5 {
+			specificCheckName = args[5]
+		}
 
 		for _, a := range args {
 			if len(a) < 1 {
