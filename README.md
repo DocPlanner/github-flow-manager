@@ -65,7 +65,8 @@ Tag your changes
 git tag -a v1.0.X -m "fix"
 ```
 
-Release
+Release  
+Note: you should generate your Personal Access Token with `write packages` scope enabled
 ```
-GITHUB_TOKEN=821dhf9harnaszpuchy55a2a8s93ns goreleaser release
+GITHUB_TOKEN=<PERSONAL_ACCESS_TOKEN> goreleaser release
 ```
