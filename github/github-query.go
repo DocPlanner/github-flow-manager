@@ -36,7 +36,7 @@ type githubQuery struct {
 												Title      githubv4.String
 												Conclusion githubv4.String
 											}
-										} `graphql:"checkRuns(first: 100)"`
+										} `graphql:"checkRuns(first: 10)"`
 									}
 								} `graphql:"checkSuites(first: 10)"`
 								Status struct {
