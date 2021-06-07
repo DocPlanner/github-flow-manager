@@ -24,7 +24,6 @@ github.com/hashicorp/go-immutable-radix v1.3.0 h1:8exGP7ego3OmkfksihtSouGMZ+hQrh
 github.com/hashicorp/go-immutable-radix v1.3.0/go.mod h1:0y9vanUI8NX6FsYoO3zeMjhV/C5i9g4Q3DwcSNZ4P60=
 github.com/hashicorp/go-memdb v1.3.1 h1:EIj6L28rTL41BDHBvwq1VJXzcmY2R2JBrxpWxF7Etyk=
 github.com/hashicorp/go-memdb v1.3.1/go.mod h1:Mluclgwib3R93Hk5fxEfiRhB+6Dar64wWh71LpNSe3g=
-github.com/hashicorp/go-uuid v1.0.0 h1:RS8zrF7PhGwyNPOtxSClXXj9HA8feRnJzgnI1RJCSnM=
 github.com/hashicorp/go-uuid v1.0.0/go.mod h1:6SBZvOh/SIDV7/2o3Jml5SYk/TvGqwFJ/bN7x4byOro=
 github.com/hashicorp/golang-lru v0.5.0/go.mod h1:/m3WP610KZHVQ1SGc6re/UDhFvYD7pJ4Ao+sR/qLZy8=
 github.com/hashicorp/golang-lru v0.5.4 h1:YDjusn29QI/Das2iO9M0BHnIbxPeyuCHsjMW+lJfyTc=
@@ -37,7 +36,6 @@ github.com/jmoiron/sqlx v1.3.1 h1:aLN7YINNZ7cYOPK3QC83dbM6KT0NMqVMw961TqrejlE=
 github.com/jmoiron/sqlx v1.3.1/go.mod h1:2BljVx/86SuTyjE+aPYlHCTNvZrnJXghYGpNiXLBMCQ=
 github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d h1:2puqoOQwi3Ai1oznMOsFIbifm6kIfJaLLyYzWD4IzTs=
 github.com/leekchan/timeutil v0.0.0-20150802142658-28917288c48d/go.mod h1:hO90vCP2x3exaSH58BIAowSKvV+0OsY21TtzuFGHON4=
-github.com/lib/pq v1.2.0 h1:LXpIM/LZ5xGFhOpXAQUIMM1HdyqzVYM13zNdjCEEcA0=
 github.com/lib/pq v1.2.0/go.mod h1:5WUZQaWbwv1U+lTReE5YruASi9Al49XbQIvNi/34Woo=
 github.com/lytics/datemath v0.0.0-20161129202832-2c793e7cfff9 h1:vIqUEjb/RPR3TNOVUznLvhbdgi3XGfTNCoxlNzRgbec=
 github.com/lytics/datemath v0.0.0-20161129202832-2c793e7cfff9/go.mod h1:kRY7eh+LgL0GNR9geXMA2cQYRmeTsbxXGua1DqdHbto=
@@ -45,7 +43,6 @@ github.com/lytics/logrus v0.0.0-20170528191427-4389a17ed024 h1:QaKVrqyQRNPbdBNCp
 github.com/lytics/logrus v0.0.0-20170528191427-4389a17ed024/go.mod h1:SkQviJ2s7rFyzyuxdVp6osZceHOabU91ZhKsEXF0RWg=
 github.com/mattn/go-runewidth v0.0.2 h1:UnlwIPBGaTZfPQ6T1IGzPI0EkYAQmT9fAEJ/poFC63o=
 github.com/mattn/go-runewidth v0.0.2/go.mod h1:LwmH8dsx7+W8Uxz3IHJYH5QSwggIsqBzpuz5H//U1FU=
-github.com/mattn/go-sqlite3 v1.14.6 h1:dNPt6NO46WmLVt2DLNpwczCmdV5boIZ6g/tlDrlRUbg=
 github.com/mattn/go-sqlite3 v1.14.6/go.mod h1:NyWgC/yNuGj7Q9rpYnZvas74GogHl5/Z4A/KQRfk6bU=
 github.com/mb0/glob v0.0.0-20160210091149-1eb79d2de6c4 h1:NK3O7S5FRD/wj7ORQ5C3Mx1STpyEMuFe+/F0Lakd1Nk=
 github.com/mb0/glob v0.0.0-20160210091149-1eb79d2de6c4/go.mod h1:FqD3ES5hx6zpzDainDaHgkTIqrPaI9uX4CVWqYZoQjY=
@@ -82,11 +79,8 @@ golang.org/x/sys v0.0.0-20180404071108-f67933eaf9e2 h1:QnU4N/uz53Htv4JX6GrVLiXKj
 golang.org/x/sys v0.0.0-20180404071108-f67933eaf9e2/go.mod h1:STP8DvDyc/dI5b8T5hshtkjS+E42TnysNCUPdjciGhY=
 google.golang.org/appengine v1.0.0 h1:dN4LljjBKVChsv0XCSI+zbyzdqrkEwX5LQFUMRSGqOc=
 google.golang.org/appengine v1.0.0/go.mod h1:EbEs0AVv82hx2wNQdGPgUI5lhzA/G0D9YwlJXL52JkM=
-gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405 h1:yhCVgyC4o1eVCa2tZl7eS0r+SDo693bJlVdllGtEeKM=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=
 gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 h1:VpOs+IwYnYBaFnrNAeB8UUWtL3vEUnzSCL1nVjPhqrw=
 gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22/go.mod h1:yeKp02qBN3iKW1OzL3MGk2IdtZzaj7SFntXj72NppTA=
-gopkg.in/yaml.v2 v2.4.0 h1:D8xgwECY7CYvx+Y2n4sBz93Jn9JRvxdiyyo8CTfuKaY=
-gopkg.in/yaml.v2 v2.4.0/go.mod h1:RDklbk79AGWmwhnvt/jBztapEOGDOx6ZbXqjP6csGnQ=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c h1:dUUwHk2QECo/6vqA44rthZ8ie2QXMNeKRTHCNY2nXvo=
 gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c/go.mod h1:K4uyk7z7BCEPqu6E+C64Yfv1cQ7kz7rIZviUmN+EgEM=
