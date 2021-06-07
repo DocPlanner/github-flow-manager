@@ -39,6 +39,12 @@ type githubQuery struct {
 										} `graphql:"checkRuns(first: 100)"`
 									}
 								} `graphql:"checkSuites(first: 10)"`
+								Status struct {
+									Contexts []struct {
+										Context githubql.String
+										State   githubql.String
+									}
+								}
 							}
 						}
 					} `graphql:"history(first: $commitsNumber)"`

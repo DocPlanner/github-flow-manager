@@ -110,6 +110,14 @@ func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 		statusSuccess := false
 		// In case a commit check name is specified, it override and get priority over the commit cumulative status
 		if specificCheckName != "" {
+			// first check if commit has commit status set
+			for _, context := range edge.Node.Status.Contexts {
+				if githubql.String(specificCheckName) == context.Context {
+					statusSuccess = context.State == githubql.String(githubql.StatusStateSuccess)
+				}
+			}
+
+			// then check  if commit has check-run set
 			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
 				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
 					if githubql.String(specificCheckName) == checkRuns.Name {

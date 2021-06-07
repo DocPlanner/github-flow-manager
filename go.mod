@@ -1,6 +1,6 @@
 module github.com/Docplanner/github-flow-manager
 
-go 1.15
+go 1.16
 
 require (
 	github.com/araddon/dateparse v0.0.0-20180325234811-1d3842569f46 // indirect
@@ -37,5 +37,4 @@ require (
 	golang.org/x/sys v0.0.0-20180404071108-f67933eaf9e2 // indirect
 	google.golang.org/appengine v1.0.0 // indirect
 	gopkg.in/mgo.v2 v2.0.0-20190816093944-a6b53ec6cb22 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
