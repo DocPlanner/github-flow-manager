@@ -4,14 +4,14 @@ import (
 	"net/http"
 
 	"github.com/google/go-github/github"
-	"github.com/shurcooL/githubql"
+	"github.com/shurcooL/githubv4"
 	"golang.org/x/net/context"
 	"golang.org/x/oauth2"
 )
 
 type githubManager struct {
 	Context    context.Context
-	Client     *githubql.Client
+	Client     *githubv4.Client
 	HttpClient *http.Client
 }
 
@@ -21,7 +21,7 @@ func New(githubAccessToken string) *githubManager {
 		&oauth2.Token{AccessToken: githubAccessToken},
 	)
 	httpClient := oauth2.NewClient(ctx, src)
-	client := githubql.NewClient(httpClient)
+	client := githubv4.NewClient(httpClient)
 
 	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
 }
@@ -35,11 +35,11 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 
 	client := gm.Client
 	err := client.Query(gm.Context, &q, map[string]interface{}{
-		"owner":         githubql.String(owner),
-		"name":          githubql.String(repo),
-		"branch":        githubql.String(branch),
-		"commitsNumber": githubql.Int(lastCommitsNumber),
-		"parentsNumber": githubql.Int(1),
+		"owner":         githubv4.String(owner),
+		"name":          githubv4.String(repo),
+		"branch":        githubv4.String(branch),
+		"commitsNumber": githubv4.Int(lastCommitsNumber),
+		"parentsNumber": githubv4.Int(1),
 	})
 	if nil != err {
 		return nil, err
@@ -112,21 +112,21 @@ func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 		if specificCheckName != "" {
 			// first check if commit has commit status set
 			for _, context := range edge.Node.Status.Contexts {
-				if githubql.String(specificCheckName) == context.Context {
-					statusSuccess = context.State == githubql.String(githubql.StatusStateSuccess)
+				if githubv4.String(specificCheckName) == context.Context {
+					statusSuccess = context.State == githubv4.String(githubv4.StatusStateSuccess)
 				}
 			}
 
 			// then check  if commit has check-run set
 			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
 				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
-					if githubql.String(specificCheckName) == checkRuns.Name {
-						statusSuccess = checkRuns.Conclusion == githubql.String(githubql.StatusStateSuccess)
+					if githubv4.String(specificCheckName) == checkRuns.Name {
+						statusSuccess = checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess)
 					}
 				}
 			}
 		} else {
-			statusSuccess = bool(edge.Node.StatusCheckRollup.State == githubql.String(githubql.StatusStateSuccess))
+			statusSuccess = bool(edge.Node.StatusCheckRollup.State == githubv4.String(githubv4.StatusStateSuccess))
 		}
 
 		fullCommitsList = append(fullCommitsList, Commit{

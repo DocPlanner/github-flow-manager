@@ -1,6 +1,6 @@
 package github
 
-import "github.com/shurcooL/githubql"
+import "github.com/shurcooL/githubv4"
 
 type githubQuery struct {
 	Repository struct {
@@ -13,36 +13,36 @@ type githubQuery struct {
 								Parents struct {
 									Edges []struct {
 										Node struct {
-											Oid     githubql.String
-											Message githubql.String
+											Oid     githubv4.String
+											Message githubv4.String
 										}
 									}
 								} `graphql:"parents(first: $parentsNumber)"`
-								Oid               githubql.String
-								Message           githubql.String
-								PushedDate        githubql.DateTime
+								Oid               githubv4.String
+								Message           githubv4.String
+								PushedDate        githubv4.DateTime
 								StatusCheckRollup struct {
-									State    githubql.String
+									State    githubv4.String
 									Contexts struct {
-										TotalCount githubql.Int
+										TotalCount githubv4.Int
 									} `graphql:"contexts(first: $parentsNumber)"`
 								}
 								CheckSuites struct {
 									Nodes []struct {
 										CheckRuns struct {
 											Nodes []struct {
-												Name       githubql.String
-												Status     githubql.String
-												Title      githubql.String
-												Conclusion githubql.String
+												Name       githubv4.String
+												Status     githubv4.String
+												Title      githubv4.String
+												Conclusion githubv4.String
 											}
-										} `graphql:"checkRuns(first: 100)"`
+										} `graphql:"checkRuns(first: 25)"`
 									}
 								} `graphql:"checkSuites(first: 10)"`
 								Status struct {
 									Contexts []struct {
-										Context githubql.String
-										State   githubql.String
+										Context githubv4.String
+										State   githubv4.String
 									}
 								}
 							}
