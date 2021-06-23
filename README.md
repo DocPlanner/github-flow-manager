@@ -15,16 +15,18 @@ Flags:
   -t, --github-token string   GitHub token (can be passed also as GITHUB_TOKEN env variable
   -h, --help                  help for github-flow-manager
   -v, --verbose               Print table with commits evaluation status
+  -s, --separator             Set string separator of status checks (default ,)
 ```
 
 ## Example
 - Evaluating commit status success based on the cumulative commit checks result
 ```
-GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
+GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" --verbose --dry-run
 ```
 - Passing specific commit check name for the evaluation of the status success of the commit
 ```
 GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
+GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-1-name-to-be-checked,pipeline-2-name-to-be-checked" --verbose --dry-run
 ```
 
 # Expressions

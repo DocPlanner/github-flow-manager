@@ -2,6 +2,7 @@ package github
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/google/go-github/github"
 	"github.com/shurcooL/githubv4"
@@ -26,7 +27,7 @@ func New(githubAccessToken string) *githubManager {
 	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
 }
 
-func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificCheckName string) ([]Commit, error) {
+func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
 	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
 		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
@@ -45,7 +46,7 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 		return nil, err
 	}
 
-	return hydrateCommits(q, specificCheckName), nil
+	return hydrateCommits(q, specificChecksNames, sep), nil
 }
 
 func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
@@ -96,7 +97,7 @@ func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force
 	return nil
 }
 
-func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
+func hydrateCommits(q *githubQuery, specificChecksNames string, sep string) []Commit {
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
 		var parents []Commit
@@ -108,25 +109,40 @@ func hydrateCommits(q *githubQuery, specificCheckName string) []Commit {
 		}
 
 		statusSuccess := false
-		// In case a commit check name is specified, it override and get priority over the commit cumulative status
-		if specificCheckName != "" {
+		checkNames := strings.Split(specificChecksNames, sep)
+		numChecks := len(checkNames)
+		sc := 0
+		cc := 0
+
+		for _, cn := range checkNames {
+
 			// first check if commit has commit status set
 			for _, context := range edge.Node.Status.Contexts {
-				if githubv4.String(specificCheckName) == context.Context {
-					statusSuccess = context.State == githubv4.String(githubv4.StatusStateSuccess)
+				if githubv4.String(cn) == context.Context {
+					if context.State == githubv4.String(githubv4.StatusStateSuccess) {
+						sc++
+					}
 				}
 			}
 
 			// then check  if commit has check-run set
 			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
 				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
-					if githubv4.String(specificCheckName) == checkRuns.Name {
-						statusSuccess = checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess)
+					if githubv4.String(cn) == checkRuns.Name {
+						if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
+							cc++
+						}
 					}
 				}
 			}
-		} else {
-			statusSuccess = bool(edge.Node.StatusCheckRollup.State == githubv4.String(githubv4.StatusStateSuccess))
+		}
+
+		if numChecks == sc || numChecks == cc {
+			statusSuccess = true
+		}
+
+		if numChecks == 0 {
+			statusSuccess = edge.Node.StatusCheckRollup.State == githubv4.String(githubv4.StatusStateSuccess)
 		}
 
 		fullCommitsList = append(fullCommitsList, Commit{
