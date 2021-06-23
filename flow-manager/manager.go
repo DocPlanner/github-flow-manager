@@ -10,16 +10,16 @@ import (
 	"github.com/araddon/qlbridge/vm"
 )
 
-func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificCheckName string, lastCommitsNumber int, force, dryRun bool) ([]evaluationResult, error) {
+func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, lastCommitsNumber int, force, dryRun bool) ([]evaluationResult, error) {
 	parsedExpression := expr.MustParse(expression)
 	gm := github.New(githubToken)
-	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificCheckName)
+	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep)
 	if nil != err {
 		return nil, err
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
-	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificCheckName)
+	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificChecksNames, sep)
 	if nil != err {
 		return nil, err
 	}

@@ -16,6 +16,7 @@ var githubToken *string
 var force *bool
 var verbose *bool
 var dryRun *bool
+var separator *string
 
 const SYMBOL_SUCCESS = "✔"
 const SYMBOL_FAIL = "✖"
@@ -34,9 +35,9 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 		sourceBranch := args[2]
 		destinationBranch := args[3]
 		expression := strings.Join(args[4:], " ")
-		specificCheckName := ""
+		specificChecksNames := ""
 		if len(args) > 5 {
-			specificCheckName = args[5]
+			specificChecksNames = args[5]
 		}
 
 		for _, a := range args {
@@ -55,7 +56,7 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 			}
 		}
 
-		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificCheckName, *commitsNumber, *force, *dryRun)
+		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *commitsNumber, *force, *dryRun)
 		if nil != err {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -115,4 +116,5 @@ func init() {
 	force = rootCmd.Flags().BoolP("force", "f", false, "Use the force Luke... - Changes branch HEAD with force")
 	verbose = rootCmd.Flags().BoolP("verbose", "v", false, "Print table with commits evaluation status")
 	dryRun = rootCmd.Flags().BoolP("dry-run", "d", false, "Don't modify repository")
+	separator = rootCmd.Flags().StringP("separator", "s", ",", "Set string separator of status checks")
 }
