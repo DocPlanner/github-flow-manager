@@ -141,7 +141,7 @@ func hydrateCommits(q *githubQuery, specificChecksNames string, sep string) []Co
 			statusSuccess = true
 		}
 
-		if numChecks == 0 {
+		if specificChecksNames == "" {
 			statusSuccess = edge.Node.StatusCheckRollup.State == githubv4.String(githubv4.StatusStateSuccess)
 		}
 
