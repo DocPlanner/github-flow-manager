@@ -1,3 +1,18 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [github-flow-manager](#github-flow-manager)
+  - [Help](#help)
+  - [Example](#example)
+  - [Pre commit](#pre-commit)
+- [Expressions](#expressions)
+    - [Available variables](#available-variables)
+    - [Examples](#examples)
+  - [How to build](#how-to-build)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # github-flow-manager
 ## Help
 ```
@@ -28,6 +43,14 @@ GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSucc
 GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
 GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-1-name-to-be-checked,pipeline-2-name-to-be-checked" --verbose --dry-run
 ```
+
+## Pre commit
+
+This repo leverage pre commit to lint, secure, document the IaaC codebase. The pre-commit configuration require the following dependencies:
+- [pre-commit](https://pre-commit.com/#install)
+- [golangci-lint](https://golangci-lint.run/usage/install/#local-installation)
+
+**One first repo download, to install the pre-commit hooks run**: `pre-commit install`, to run the hooks at will run: `pre-commit run -a`
 
 # Expressions
 ### Available variables
@@ -67,7 +90,7 @@ Tag your changes
 git tag -a v1.0.X -m "fix"
 ```
 
-Release  
+Release
 Note: you should generate your Personal Access Token with `write packages` scope enabled
 ```
 GITHUB_TOKEN=<PERSONAL_ACCESS_TOKEN> goreleaser release
