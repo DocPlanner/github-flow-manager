@@ -9,7 +9,28 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
 dockers:
   - image_templates:
-    - "docplanner/github-flow-manager:latest"
-    - "docplanner/github-flow-manager:{{ .Tag }}"
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    goarch: amd64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+    - --platform=linux/amd64
+  - image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+    goarch: arm64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+    - --platform=linux/arm64/v8
+docker_manifests:
+  - name_template: docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}
+    image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+  - name_template: docplanner/github-flow-manager:latest
+    image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64

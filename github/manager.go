@@ -10,13 +10,15 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type githubManager struct {
+// Manager represents the information necessary in Github to manage the repository
+type Manager struct {
 	Context    context.Context
 	Client     *githubv4.Client
-	HttpClient *http.Client
+	HTTPClient *http.Client
 }
 
-func New(githubAccessToken string) *githubManager {
+// New creates a new githubManager using a github access token
+func New(githubAccessToken string) *Manager {
 	ctx := context.Background()
 	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
@@ -24,15 +26,16 @@ func New(githubAccessToken string) *githubManager {
 	httpClient := oauth2.NewClient(ctx, src)
 	client := githubv4.NewClient(httpClient)
 
-	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
+	return &Manager{Context: ctx, Client: client, HTTPClient: httpClient}
 }
 
-func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
+// GetCommits recover the commits for a specific repository in a specific branch
+func (gm *Manager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
 	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
 		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
 
-	q := &GithubQuery{}
+	q := &Query{}
 
 	client := gm.Client
 	err := client.Query(gm.Context, &q, map[string]interface{}{
@@ -49,6 +52,7 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 	return hydrateCommits(q, specificChecksNames, sep), nil
 }
 
+// PickFirstParentCommits recover the first parent commit of a commit history from a repository
 func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 	var firstParentCommits []Commit
 	if len(fullCommitsList) == 0 {
@@ -77,9 +81,10 @@ func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 	return firstParentCommits
 }
 
+// ChangeBranchHead change the head of a branch
 // TODO remove v3 client when implemented in v4
-func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force bool) error {
-	httpClient := gm.HttpClient
+func (gm *Manager) ChangeBranchHead(owner, repo, branch, sha string, force bool) error {
+	httpClient := gm.HTTPClient
 
 	client := github.NewClient(httpClient)
 	ref, _, err := client.Git.GetRef(gm.Context, owner, repo, "heads/"+branch)
@@ -118,7 +123,7 @@ func checkRunSet(cc int, cn string, edge Edge) int {
 	return cc
 }
 
-func hydrateCommits(q *GithubQuery, specificChecksNames string, sep string) []Commit {
+func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
 
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {

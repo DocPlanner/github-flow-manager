@@ -1,6 +1,6 @@
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+**Table of Contents**
 
 - [github-flow-manager](#github-flow-manager)
   - [Help](#help)
@@ -9,12 +9,19 @@
 - [Expressions](#expressions)
     - [Available variables](#available-variables)
     - [Examples](#examples)
+        - [Commit message contains "string"](#commit-message-contains-string)
+        - [Commit message not contains "string"](#commit-message-not-contains-string)
+        - [Commit message equals "string"](#commit-message-equals-string)
+        - [Commit status is SUCCESS](#commit-status-is-success)
+        - [Commit was pushed more than 30 minutes ago](#commit-was-pushed-more-than-30-minutes-ago)
+        - [Commit was pushed more than 30 minutes ago and status is SUCCESS](#commit-was-pushed-more-than-30-minutes-ago-and-status-is-success)
   - [How to build](#how-to-build)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 # github-flow-manager
 ## Help
+
 ```
 Main goal for that app is to push commits between branches
 but just those which pass evaluation checks.
