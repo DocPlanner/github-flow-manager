@@ -8,15 +8,6 @@
   - [Pre commit](#pre-commit)
   - [Expressions](#expressions)
     - [Available variables](#available-variables)
-<<<<<<< HEAD
-    - [Examples](#examples)
-        - [Commit message contains "string"](#commit-message-contains-string)
-        - [Commit message not contains "string"](#commit-message-not-contains-string)
-        - [Commit message equals "string"](#commit-message-equals-string)
-        - [Commit status is SUCCESS](#commit-status-is-success)
-        - [Commit was pushed more than 30 minutes ago](#commit-was-pushed-more-than-30-minutes-ago)
-        - [Commit was pushed more than 30 minutes ago and status is SUCCESS](#commit-was-pushed-more-than-30-minutes-ago-and-status-is-success)
-=======
   - [Examples](#examples)
     - [Commit message contains "string"](#commit-message-contains-string)
     - [Commit message not contains "string"](#commit-message-not-contains-string)
@@ -24,7 +15,6 @@
     - [Commit status is SUCCESS](#commit-status-is-success)
     - [Commit was pushed more than 30 minutes ago](#commit-was-pushed-more-than-30-minutes-ago)
     - [Commit was pushed more than 30 minutes ago and status is SUCCESS](#commit-was-pushed-more-than-30-minutes-ago-and-status-is-success)
->>>>>>> 803efb0 (fix: correct linter errors in README.md)
   - [How to build](#how-to-build)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
