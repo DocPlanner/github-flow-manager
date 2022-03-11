@@ -23,11 +23,6 @@ archives:
       amd64: 64-bit
       darwin: macOS
 
-release:
-  github:
-    owner: DocPlanner
-    name: github-flow-manager
-
 nfpms:
   - id: github-flow-manager
     builds:
