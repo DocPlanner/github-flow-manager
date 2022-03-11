@@ -1,3 +1,8 @@
+[![Tests][tests-badge]][tests-link]
+[![GitHub Release][release-badge]][release-link]
+[![Go Report Card][report-badge]][report-link]
+[![License][license-badge]][license-link]
+
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
@@ -117,3 +122,16 @@ Tag your changes to create a new release with the tag specified:
 ```sh
 git tag -a v1.0.X -m "fix"
 ```
+
+<!-- JUST BADGES & LINKS -->
+[tests-badge]: https://img.shields.io/github/workflow/status/DocPlanner/github-flow-manager/Tests
+[tests-link]: https://github.com/DocPlanner/github-flow-manager/actions?query=workflow%3ATests
+
+[release-badge]: https://img.shields.io/github/release/DocPlanner/github-flow-manager.svg?logo=github&labelColor=262b30
+[release-link]: https://github.com/DocPlanner/github-flow-manager/releases
+
+[report-badge]: https://goreportcard.com/badge/github.com/DocPlanner/github-flow-manager
+[report-link]: https://goreportcard.com/report/github.com/DocPlanner/github-flow-manager
+
+[license-badge]: https://img.shields.io/github/license/DocPlanner/github-flow-manager
+[license-link]: https://github.com/DocPlanner/github-flow-manager/blob/master/LICENSE
