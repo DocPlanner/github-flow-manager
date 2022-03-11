@@ -37,6 +37,7 @@ nfpms:
 dockers:
   - image_templates:
     - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
     goarch: amd64
     dockerfile: Dockerfile
     use: buildx
@@ -44,6 +45,7 @@ dockers:
     - --platform=linux/amd64
   - image_templates:
     - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
     goarch: arm64
     dockerfile: Dockerfile
     use: buildx
@@ -58,3 +60,11 @@ docker_manifests:
     image_templates:
     - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
     - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+  - name_template: ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}
+    image_templates:
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+  - name_template: ghcr.io/docplanner/github-flow-manager:latest
+    image_templates:
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
