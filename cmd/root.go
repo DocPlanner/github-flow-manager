@@ -4,29 +4,47 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Docplanner/github-flow-manager/flow-manager"
-	"github.com/olekukonko/tablewriter"
-	"github.com/spf13/cobra"
 	"strings"
 	"time"
+
+	flow_manager "github.com/Docplanner/github-flow-manager/manager"
+	"github.com/olekukonko/tablewriter"
+	"github.com/spf13/cobra"
 )
 
-var commitsNumber *int
-var githubToken *string
-var force *bool
-var verbose *bool
-var dryRun *bool
-var separator *string
+var (
+	commitsNumber *int
+	githubToken   *string
+	force         *bool
+	verbose       *bool
+	dryRun        *bool
+	separator     *string
+)
 
-const SYMBOL_SUCCESS = "✔"
-const SYMBOL_FAIL = "✖"
+const (
+	// symbolSuccess represents the symbol for successful
+	symbolSuccess = "✔"
+	// symbolSuccess represents the symbol for failure
+	symbolFail = "✖"
+)
 
+// checkMinimumArgs check that is set the minimum args to call the cobra command
+func checkMinimumArgs(args []string) error {
+	for _, a := range args {
+		if len(a) < 1 {
+			return fmt.Errorf("not provided minimum args")
+		}
+	}
+	return nil
+}
+
+// rootCmd represents the root command
 var rootCmd = &cobra.Command{
 	Args:  cobra.MinimumNArgs(5),
 	Use:   "github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION] [SPECIFIC_COMMIT_CHECK_NAME]",
 	Short: "GitHub Flow Manager",
 	Long: `Main goal for that app is to push commits between branches
-but just those which pass evaluation checks. 
+but just those which pass evaluation checks.
 Example use case "push all commits pushed to branch develop more than 30 minutes ago to branch master"
 If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculated based ONLY on the result of that specific commit check`,
 	Run: func(cmd *cobra.Command, args []string) {
@@ -40,27 +58,20 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 			specificChecksNames = args[5]
 		}
 
-		for _, a := range args {
-			if len(a) < 1 {
-				cmd.Help()
-				return
-			}
+		err := checkMinimumArgs(args)
+		if err != nil {
+			fmt.Println(err.Error())
+			os.Exit(1)
 		}
 
-		if "" == *githubToken {
+		if *githubToken == "" {
 			*githubToken = os.Getenv("GITHUB_TOKEN")
-			if "" == *githubToken {
-				fmt.Println("Github token not set!")
-				cmd.Help()
-				return
-			}
 		}
 
 		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *commitsNumber, *force, *dryRun)
-		if nil != err {
+		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
-			return
 		}
 
 		if !*verbose {
@@ -79,14 +90,14 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 		for _, res := range results {
 			c := res.Commit
 
-			statusSign := SYMBOL_FAIL
+			statusSign := symbolFail
 			if c.StatusSuccess {
-				statusSign = SYMBOL_SUCCESS
+				statusSign = symbolSuccess
 			}
 
-			resultSign := SYMBOL_FAIL
+			resultSign := symbolFail
 			if res.Result {
-				resultSign = SYMBOL_SUCCESS
+				resultSign = symbolSuccess
 			}
 
 			table.Append([]string{c.SHA, c.Message, c.PushedDate.Format(time.RFC3339), statusSign, resultSign})
@@ -103,11 +114,10 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 	},
 }
 
+// Execute adds all child commands to the root command and sets flags appropriately.
+// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+	cobra.CheckErr(rootCmd.Execute())
 }
 
 func init() {

@@ -10,13 +10,15 @@ import (
 	"golang.org/x/oauth2"
 )
 
-type githubManager struct {
+// Manager represents the information necessary in Github to manage the repository
+type Manager struct {
 	Context    context.Context
 	Client     *githubv4.Client
-	HttpClient *http.Client
+	HTTPClient *http.Client
 }
 
-func New(githubAccessToken string) *githubManager {
+// New creates a new githubManager using a github access token
+func New(githubAccessToken string) *Manager {
 	ctx := context.Background()
 	src := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: githubAccessToken},
@@ -24,15 +26,16 @@ func New(githubAccessToken string) *githubManager {
 	httpClient := oauth2.NewClient(ctx, src)
 	client := githubv4.NewClient(httpClient)
 
-	return &githubManager{Context: ctx, Client: client, HttpClient: httpClient}
+	return &Manager{Context: ctx, Client: client, HTTPClient: httpClient}
 }
 
-func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
+// GetCommits recover the commits for a specific repository in a specific branch
+func (gm *Manager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
 	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
 		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
 
-	q := &githubQuery{}
+	q := &Query{}
 
 	client := gm.Client
 	err := client.Query(gm.Context, &q, map[string]interface{}{
@@ -49,9 +52,10 @@ func (gm *githubManager) GetCommits(owner, repo, branch string, lastCommitsNumbe
 	return hydrateCommits(q, specificChecksNames, sep), nil
 }
 
+// PickFirstParentCommits recover the first parent commit of a commit history from a repository
 func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 	var firstParentCommits []Commit
-	if 0 == len(fullCommitsList) {
+	if len(fullCommitsList) == 0 {
 		return firstParentCommits
 	}
 
@@ -68,7 +72,7 @@ func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 		}
 
 		firstParentCommits = append(firstParentCommits, c)
-		if 0 == len(c.Parents) {
+		if len(c.Parents) == 0 {
 			break // initial commit
 		}
 		sha = c.Parents[0].SHA
@@ -77,9 +81,10 @@ func PickFirstParentCommits(fullCommitsList []Commit) []Commit {
 	return firstParentCommits
 }
 
+// ChangeBranchHead change the head of a branch
 // TODO remove v3 client when implemented in v4
-func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force bool) error {
-	httpClient := gm.HttpClient
+func (gm *Manager) ChangeBranchHead(owner, repo, branch, sha string, force bool) error {
+	httpClient := gm.HTTPClient
 
 	client := github.NewClient(httpClient)
 	ref, _, err := client.Git.GetRef(gm.Context, owner, repo, "heads/"+branch)
@@ -89,7 +94,7 @@ func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force
 
 	ref.GetObject().SHA = &sha
 
-	ref, _, err = client.Git.UpdateRef(gm.Context, owner, repo, ref, force)
+	_, _, err = client.Git.UpdateRef(gm.Context, owner, repo, ref, force)
 	if nil != err {
 		return &Error{Message: "Can not update branch head because: " + err.Error(), PreviousError: err}
 	}
@@ -97,7 +102,29 @@ func (gm *githubManager) ChangeBranchHead(owner, repo, branch, sha string, force
 	return nil
 }
 
-func hydrateCommits(q *githubQuery, specificChecksNames string, sep string) []Commit {
+func checkRunSet(cc int, cn string, edge Edge) int {
+	for _, checkSuite := range edge.Node.CheckSuites.Nodes {
+		if checkSuite.App.Name == "GitHub Actions" {
+			if githubv4.String(cn) == checkSuite.WorkflowRun.Workflow.Name {
+				if checkSuite.WorkflowRun.CheckSuite.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
+					cc++
+				}
+			}
+		} else {
+			for _, checkRuns := range checkSuite.CheckRuns.Nodes {
+				if githubv4.String(cn) == checkRuns.Name {
+					if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
+						cc++
+					}
+				}
+			}
+		}
+	}
+	return cc
+}
+
+func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
+
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
 		var parents []Commit
@@ -124,17 +151,7 @@ func hydrateCommits(q *githubQuery, specificChecksNames string, sep string) []Co
 					}
 				}
 			}
-
-			// then check  if commit has check-run set
-			for _, checkSuite := range edge.Node.CheckSuites.Nodes {
-				for _, checkRuns := range checkSuite.CheckRuns.Nodes {
-					if githubv4.String(cn) == checkRuns.Name {
-						if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-							cc++
-						}
-					}
-				}
-			}
+			cc = checkRunSet(cc, cn, edge)
 		}
 
 		if numChecks == sc || numChecks == cc {

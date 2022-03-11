@@ -1,3 +1,5 @@
+project_name: github-flow-manager
+
 builds:
   - binary: github-flow-manager
     env:
@@ -9,7 +11,55 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
+
+archives:
+  - format_overrides:
+      - goos: windows
+        format: zip
+    builds:
+      - github-flow-manager
+    replacements:
+      amd64: 64-bit
+      darwin: macOS
+
+release:
+  github:
+    owner: DocPlanner
+    name: github-flow-manager
+
+nfpms:
+  - id: github-flow-manager
+    builds:
+      - github-flow-manager
+    formats:
+      - deb
+    vendor: DocPlanner
+    homepage: https://github.com/DoccPlanner/github-flow-manager
+    maintainer: DevOps Team <devops@docplanner.com>
+    description: Push commits between branches but just those which pass evaluation checks
+
 dockers:
   - image_templates:
-    - "docplanner/github-flow-manager:latest"
-    - "docplanner/github-flow-manager:{{ .Tag }}"
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    goarch: amd64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+    - --platform=linux/amd64
+  - image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+    goarch: arm64
+    dockerfile: Dockerfile
+    use: buildx
+    build_flag_templates:
+    - --platform=linux/arm64/v8
+docker_manifests:
+  - name_template: docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}
+    image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64
+  - name_template: docplanner/github-flow-manager:latest
+    image_templates:
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-amd64
+    - docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}-arm64

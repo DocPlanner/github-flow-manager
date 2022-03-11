@@ -1,4 +1,21 @@
-.idea/
-vendor/
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
 
-/.vscode/launch.json
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# VisualStudioCode
+.vscode/*
+
+### Intellij ###
+.idea
+
+# Generated binary files
+bin

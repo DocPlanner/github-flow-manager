@@ -1,4 +1,4 @@
-package flow_manager
+package manager
 
 import (
 	"fmt"
@@ -10,7 +10,19 @@ import (
 	"github.com/araddon/qlbridge/vm"
 )
 
-func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, lastCommitsNumber int, force, dryRun bool) ([]evaluationResult, error) {
+func checkGithubToken(githubToken string) error {
+	if githubToken == "" {
+		return fmt.Errorf("github token not set")
+	}
+	return nil
+}
+
+// Manage will do the necessary actions to move the head from one branch to another
+func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, lastCommitsNumber int, force, dryRun bool) ([]EvaluationResult, error) {
+	err := checkGithubToken(githubToken)
+	if err != nil {
+		return nil, err
+	}
 	parsedExpression := expr.MustParse(expression)
 	gm := github.New(githubToken)
 	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep)
@@ -24,7 +36,7 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 		return nil, err
 	}
 
-	var evaluationResultList []evaluationResult
+	var evaluationResultList []EvaluationResult
 	builtins.LoadAllBuiltins()
 	for _, commit := range firstParentCommits {
 
@@ -43,7 +55,7 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 		val, _ := vm.Eval(evalContext, parsedExpression)
 		v := val.Value()
 
-		evaluationResultList = append(evaluationResultList, evaluationResult{Result: v.(bool), Commit: commit})
+		evaluationResultList = append(evaluationResultList, EvaluationResult{Result: v.(bool), Commit: commit})
 
 		if true == v {
 			if !dryRun {
