@@ -22,7 +22,7 @@ release:
     - `docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}`
     - `docplanner/github-flow-manager:latest`
     - `ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}`
-    - `ghcr.io/docplanner/github-flow-manager:latest
+    - `ghcr.io/docplanner/github-flow-manager:latest`
 
 archives:
   - format_overrides:
