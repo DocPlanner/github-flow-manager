@@ -13,6 +13,17 @@ builds:
       - amd64
       - arm64
 
+release:
+  github:
+    owner: DocPlanner
+    name: github-flow-manager
+  footer: |
+    ## Docker Images
+    - `docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}`
+    - `docplanner/github-flow-manager:latest`
+    - `ghcr.io/docplanner/github-flow-manager:{{ trimprefix .Tag "v" }}`
+    - `ghcr.io/docplanner/github-flow-manager:latest
+
 archives:
   - format_overrides:
       - goos: windows
