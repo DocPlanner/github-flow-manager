@@ -104,18 +104,17 @@ func (gm *Manager) ChangeBranchHead(owner, repo, branch, sha string, force bool)
 
 func checkRunSet(cc int, cn string, edge Edge) int {
 	for _, checkSuite := range edge.Node.CheckSuites.Nodes {
-		if checkSuite.App.Name == "GitHub Actions" {
-			if githubv4.String(cn) == checkSuite.WorkflowRun.Workflow.Name {
-				if checkSuite.WorkflowRun.CheckSuite.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-					cc++
-				}
+		if (checkSuite.WorkflowRun != WorkflowRun{}) && githubv4.String(cn) == checkSuite.WorkflowRun.Workflow.Name {
+			if checkSuite.WorkflowRun.CheckSuite.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
+				cc++
+				continue
 			}
-		} else {
-			for _, checkRuns := range checkSuite.CheckRuns.Nodes {
-				if githubv4.String(cn) == checkRuns.Name {
-					if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-						cc++
-					}
+		}
+
+		for _, checkRuns := range checkSuite.CheckRuns.Nodes {
+			if githubv4.String(cn) == checkRuns.Name {
+				if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
+					cc++
 				}
 			}
 		}
