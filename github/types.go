@@ -31,14 +31,8 @@ type WorkflowRun struct {
 	CheckSuite CheckSuite
 }
 
-// ActionApp represents the information about the Github Action App
-type ActionApp struct {
-	Name githubv4.String
-}
-
 // CheckSuiteNode represents the information about the check suite information of the Node
 type CheckSuiteNode struct {
-	App         ActionApp
 	WorkflowRun WorkflowRun
 	CheckRuns   CheckRuns `graphql:"checkRuns(first: 25)"`
 }
