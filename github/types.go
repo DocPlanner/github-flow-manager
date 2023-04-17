@@ -87,7 +87,7 @@ type EdgeRootNode struct {
 	Message           githubv4.String
 	PushedDate        githubv4.DateTime
 	StatusCheckRollup StatusCheckRollup
-	CheckSuites       CheckSuites `graphql:"checkSuites(first: 10)"`
+	CheckSuites       CheckSuites `graphql:"checkSuites(first: 20)"`
 	Status            NodeStatus
 }
 
