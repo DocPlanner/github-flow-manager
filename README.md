@@ -18,8 +18,8 @@
     - [Commit message not contains "string"](#commit-message-not-contains-string)
     - [Commit message equals "string"](#commit-message-equals-string)
     - [Commit status is SUCCESS](#commit-status-is-success)
-    - [Commit was pushed more than 30 minutes ago](#commit-was-pushed-more-than-30-minutes-ago)
-    - [Commit was pushed more than 30 minutes ago and status is SUCCESS](#commit-was-pushed-more-than-30-minutes-ago-and-status-is-success)
+    - [Commit was authored more than 30 minutes ago](#commit-was-authored-more-than-30-minutes-ago)
+    - [Commit was authored more than 30 minutes ago and status is SUCCESS](#commit-was-authored-more-than-30-minutes-ago-and-status-is-success)
   - [How to build](#how-to-build)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -76,7 +76,7 @@ This repo leverage pre commit to lint, secure, document the IaaC codebase. The p
 
 - `SHA`
 - `Message`
-- `PushedDate` - when commit was pushed
+- `AuthoredDate` - when commit was authored
 - `StatusSuccess` - f.ex. CI status
 
 ## Examples
@@ -97,13 +97,13 @@ This repo leverage pre commit to lint, secure, document the IaaC codebase. The p
 
 `StatusSuccess == true`
 
-### Commit was pushed more than 30 minutes ago
+### Commit was authored more than 30 minutes ago
 
-`PushedDate < "now-30m"`
+`AuthoredDate < "now-30m"`
 
-### Commit was pushed more than 30 minutes ago and status is SUCCESS
+### Commit was authored more than 30 minutes ago and status is SUCCESS
 
-`PushedDate < "now-30m" AND StatusSuccess == true`
+`AuthoredDate < "now-30m" AND StatusSuccess == true`
 
 ## How to build
 

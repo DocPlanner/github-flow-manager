@@ -75,6 +75,11 @@ type StatusCheckRollup struct {
 	Contexts StatusCheckRollupContexts `graphql:"contexts(first: $parentsNumber)"`
 }
 
+// Author represents the information about the commit author
+type Author struct {
+	Name githubv4.String
+}
+
 // ParentsEdge represents the information about the parents edge
 type ParentsEdge struct {
 	Edges []EdgeParent
@@ -85,7 +90,8 @@ type EdgeRootNode struct {
 	Parents           ParentsEdge `graphql:"parents(first: $parentsNumber)"`
 	Oid               githubv4.String
 	Message           githubv4.String
-	PushedDate        githubv4.DateTime
+	AuthoredDate      githubv4.DateTime
+	Author            Author
 	StatusCheckRollup StatusCheckRollup
 	CheckSuites       CheckSuites `graphql:"checkSuites(first: 20)"`
 	Status            NodeStatus

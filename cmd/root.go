@@ -85,7 +85,7 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetRowLine(true)
-		table.SetHeader([]string{"SHA", "MESSAGE", "PUSHED_AT", "IS_STATUS_SUCCESS", "EVALUATION"})
+		table.SetHeader([]string{"SHA", "MESSAGE", "AUTHORED_AT", "AUTHORED_BY", "IS_STATUS_SUCCESS", "EVALUATION"})
 
 		for _, res := range results {
 			c := res.Commit
@@ -100,7 +100,7 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 				resultSign = symbolSuccess
 			}
 
-			table.Append([]string{c.SHA, c.Message, c.PushedDate.Format(time.RFC3339), statusSign, resultSign})
+			table.Append([]string{c.SHA, c.Message, c.AuthoredDate.Format(time.RFC3339), c.AuthorName, statusSign, resultSign})
 		}
 
 		table.Render()
