@@ -8,6 +8,7 @@ type Commit struct {
 	Message             string
 	Parents             []Commit
 	StatusSuccess       bool
-	PushedDate          time.Time
+	AuthoredDate        time.Time
+	AuthorName          string
 	SpecificCheckPassed bool
 }
