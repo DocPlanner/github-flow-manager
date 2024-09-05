@@ -48,7 +48,7 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 		evalContext := datasource.NewContextSimpleNative(map[string]interface{}{
 			"SHA":           commit.SHA,
 			"Message":       commit.Message,
-			"AuthoredDate":    commit.AuthoredDate,
+			"AuthoredDate":  commit.AuthoredDate,
 			"StatusSuccess": commit.StatusSuccess,
 		})
 
