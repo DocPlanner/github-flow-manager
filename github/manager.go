@@ -167,7 +167,7 @@ func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
 			Parents:       parents,
 			StatusSuccess: statusSuccess,
 			AuthoredDate:  edge.Node.AuthoredDate.Time,
-			AuthorName:    edge.Node.Author.Name,
+			AuthorName:    string(edge.Node.Author.Name),
 		})
 	}
 
