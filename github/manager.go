@@ -102,11 +102,11 @@ func (gm *Manager) ChangeBranchHead(owner, repo, branch, sha string, force bool)
 	return nil
 }
 
-func checkRunSet(cc int, cn string, edge Edge) int {
+func checkRunSet(checksPassed *int, cn string, edge Edge) {
 	for _, checkSuite := range edge.Node.CheckSuites.Nodes {
 		if (checkSuite.WorkflowRun != WorkflowRun{}) && githubv4.String(cn) == checkSuite.WorkflowRun.Workflow.Name {
 			if checkSuite.WorkflowRun.CheckSuite.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-				cc++
+				*checksPassed++
 				continue
 			}
 		}
@@ -114,12 +114,11 @@ func checkRunSet(cc int, cn string, edge Edge) int {
 		for _, checkRuns := range checkSuite.CheckRuns.Nodes {
 			if githubv4.String(cn) == checkRuns.Name {
 				if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-					cc++
+					*checksPassed++
 				}
 			}
 		}
 	}
-	return cc
 }
 
 func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
@@ -137,23 +136,22 @@ func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
 		statusSuccess := false
 		checkNames := strings.Split(specificChecksNames, sep)
 		numChecks := len(checkNames)
-		sc := 0
-		cc := 0
+		checksPassed := 0
 
 		for _, cn := range checkNames {
-
 			// first check if commit has commit status set
-			for _, context := range edge.Node.Status.Contexts {
-				if githubv4.String(cn) == context.Context {
-					if context.State == githubv4.String(githubv4.StatusStateSuccess) {
-						sc++
+			for _, ctx := range edge.Node.Status.Contexts {
+				if githubv4.String(cn) == ctx.Context {
+					if ctx.State == githubv4.String(githubv4.StatusStateSuccess) {
+						checksPassed++
 					}
 				}
 			}
-			cc = checkRunSet(cc, cn, edge)
+
+			checkRunSet(&checksPassed, cn, edge)
 		}
 
-		if numChecks == sc || numChecks == cc {
+		if checksPassed == numChecks {
 			statusSuccess = true
 		}
 
