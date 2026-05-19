@@ -34,7 +34,7 @@ type WorkflowRun struct {
 // CheckSuiteNode represents the information about the check suite information of the Node
 type CheckSuiteNode struct {
 	WorkflowRun WorkflowRun
-	CheckRuns   CheckRuns `graphql:"checkRuns(first: 100)"`
+	CheckRuns   CheckRuns `graphql:"checkRuns(first: 25)"`
 }
 
 // CheckSuites represents the information about the check suite of a slice of Nodes
