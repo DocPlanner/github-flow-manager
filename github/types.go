@@ -93,7 +93,7 @@ type EdgeRootNode struct {
 	AuthoredDate      githubv4.DateTime
 	Author            Author
 	StatusCheckRollup StatusCheckRollup
-	CheckSuites       CheckSuites `graphql:"checkSuites(first: 100)"`
+	CheckSuites       CheckSuites `graphql:"checkSuites(first: 20)"`
 	Status            NodeStatus
 }
 
