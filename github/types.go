@@ -34,7 +34,7 @@ type WorkflowRun struct {
 // CheckSuiteNode represents the information about the check suite information of the Node
 type CheckSuiteNode struct {
 	WorkflowRun WorkflowRun
-	CheckRuns   CheckRuns `graphql:"checkRuns(first: 25)"`
+	CheckRuns   CheckRuns `graphql:"checkRuns(first: 100)"`
 }
 
 // CheckSuites represents the information about the check suite of a slice of Nodes
@@ -93,7 +93,7 @@ type EdgeRootNode struct {
 	AuthoredDate      githubv4.DateTime
 	Author            Author
 	StatusCheckRollup StatusCheckRollup
-	CheckSuites       CheckSuites `graphql:"checkSuites(first: 20)"`
+	CheckSuites       CheckSuites `graphql:"checkSuites(first: 100)"`
 	Status            NodeStatus
 }
 
