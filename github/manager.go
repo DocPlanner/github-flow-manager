@@ -2,7 +2,6 @@ package github
 
 import (
 	"net/http"
-	"strings"
 
 	"github.com/google/go-github/github"
 	"github.com/shurcooL/githubv4"
@@ -29,8 +28,11 @@ func New(githubAccessToken string) *Manager {
 	return &Manager{Context: ctx, Client: client, HTTPClient: httpClient}
 }
 
-// GetCommits recover the commits for a specific repository in a specific branch
-func (gm *Manager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string) ([]Commit, error) {
+// GetCommits recover the commits for a specific repository in a specific branch.
+// When specificChecksNames is set, every name it contains must be satisfied on a
+// commit for its StatusSuccess to be true; acceptSkippedChecks additionally lets
+// a check GitHub reports as SKIPPED count as satisfied.
+func (gm *Manager) GetCommits(owner, repo, branch string, lastCommitsNumber int, specificChecksNames string, sep string, acceptSkippedChecks bool) ([]Commit, error) {
 	if lastCommitsNumber > 100 || lastCommitsNumber < 1 {
 		return nil, &Error{Message: "lastCommitsNumber must be a number between 1 and 100"} // TODO maybe in future implement pagination
 	}
@@ -49,7 +51,7 @@ func (gm *Manager) GetCommits(owner, repo, branch string, lastCommitsNumber int,
 		return nil, err
 	}
 
-	return hydrateCommits(q, specificChecksNames, sep), nil
+	return hydrateCommits(q, specificChecksNames, sep, acceptSkippedChecks), nil
 }
 
 // PickFirstParentCommits recover the first parent commit of a commit history from a repository
@@ -102,26 +104,7 @@ func (gm *Manager) ChangeBranchHead(owner, repo, branch, sha string, force bool)
 	return nil
 }
 
-func checkRunSet(checksPassed *int, cn string, edge Edge) {
-	for _, checkSuite := range edge.Node.CheckSuites.Nodes {
-		if (checkSuite.WorkflowRun != WorkflowRun{}) && githubv4.String(cn) == checkSuite.WorkflowRun.Workflow.Name {
-			if checkSuite.WorkflowRun.CheckSuite.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-				*checksPassed++
-				continue
-			}
-		}
-
-		for _, checkRuns := range checkSuite.CheckRuns.Nodes {
-			if githubv4.String(cn) == checkRuns.Name {
-				if checkRuns.Conclusion == githubv4.String(githubv4.StatusStateSuccess) {
-					*checksPassed++
-				}
-			}
-		}
-	}
-}
-
-func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
+func hydrateCommits(q *Query, specificChecksNames string, sep string, acceptSkippedChecks bool) []Commit {
 
 	var fullCommitsList []Commit
 	for _, edge := range q.Repository.Ref.Target.Commit.History.Edges {
@@ -133,30 +116,14 @@ func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
 			})
 		}
 
-		statusSuccess := false
-		checkNames := strings.Split(specificChecksNames, sep)
-		numChecks := len(checkNames)
-		checksPassed := 0
-
-		for _, cn := range checkNames {
-			// first check if commit has commit status set
-			for _, ctx := range edge.Node.Status.Contexts {
-				if githubv4.String(cn) == ctx.Context {
-					if ctx.State == githubv4.String(githubv4.StatusStateSuccess) {
-						checksPassed++
-					}
-				}
-			}
-
-			checkRunSet(&checksPassed, cn, edge)
-		}
-
-		if checksPassed == numChecks {
-			statusSuccess = true
-		}
+		var statusSuccess bool
+		var checksSummary []string
 
 		if specificChecksNames == "" {
+			// No specific names were asked for, so trust GitHub's own rollup.
 			statusSuccess = edge.Node.StatusCheckRollup.State == githubv4.String(githubv4.StatusStateSuccess)
+		} else {
+			statusSuccess, checksSummary = evaluateSpecificChecks(edge, splitCheckNames(specificChecksNames, sep), acceptSkippedChecks)
 		}
 
 		fullCommitsList = append(fullCommitsList, Commit{
@@ -164,6 +131,7 @@ func hydrateCommits(q *Query, specificChecksNames string, sep string) []Commit {
 			Message:       string(edge.Node.Message),
 			Parents:       parents,
 			StatusSuccess: statusSuccess,
+			ChecksSummary: checksSummary,
 			AuthoredDate:  edge.Node.AuthoredDate.Time,
 			AuthorName:    string(edge.Node.Author.Name),
 		})

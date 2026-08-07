@@ -10,6 +10,7 @@
 - [github-flow-manager](#github-flow-manager)
   - [Help](#help)
   - [Example](#example)
+  - [How specific check names are evaluated](#how-specific-check-names-are-evaluated)
   - [Pre commit](#pre-commit)
   - [Expressions](#expressions)
     - [Available variables](#available-variables)
@@ -37,6 +38,8 @@ Usage:
   github-flow-manager [OWNER] [REPOSITORY] [SOURCE_BRANCH] [DESTINATION_BRANCH] [EXPRESSION] [SPECIFIC_COMMIT_CHECK_NAME - Optional] [flags]
 
 Flags:
+      --accept-skipped-checks
+                              Accept a required check GitHub reports as SKIPPED as satisfied
   -c, --commits-number int    Number of commits to get under evaluation (>0, <=100) (default 100)
   -d, --dry-run               Don't modify repository
   -f, --force                 Use the force Luke... - Changes branch HEAD with force
@@ -60,6 +63,45 @@ GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSucc
 GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-name-to-be-checked" --verbose --dry-run
 GITHUB_TOKEN=xxx github-flow-manager octocat Hello-World test master "StatusSuccess == false" "pipeline-1-name-to-be-checked,pipeline-2-name-to-be-checked" --verbose --dry-run
 ```
+
+## How specific check names are evaluated
+
+When `SPECIFIC_COMMIT_CHECK_NAME` is given, every name in it is evaluated
+**separately**, and `StatusSuccess` is true only when **all** of them are
+satisfied. A name is satisfied when:
+
+- at least one result on the commit carries that name - otherwise the check
+  never ran and the commit is not promotable;
+- no result for that name is still queued or in progress, so a promotion can
+  never pre-empt a verdict; and
+- every concluded result for that name concluded `SUCCESS`.
+
+Only `SUCCESS` satisfies a required check. `NEUTRAL` deliberately does **not**:
+`devops-pipelines`' `hotfix_aware_skip_check` publishes `hotfix-skip-tests` as
+`SUCCESS` to mean "authorised to promote without tests" and `NEUTRAL` to mean
+"not a hotfix", and repositories gate their hotfix promote on that single name,
+so accepting `NEUTRAL` would turn a fail-closed gate into a fail-open one.
+
+A name may legitimately be reported **more than once** - a merge queue builds a
+commit twice, once for the queue run and once for the push run, and a reusable
+workflow called by several callers publishes its check once per caller. Several
+results for one name are fine as long as they are all green. A name can also be
+reported as a commit status context, as the name of a workflow, or as the name of
+a check run; all three are searched.
+
+`SKIPPED` does not satisfy a required check either, unless
+`--accept-skipped-checks` is passed. Prefer solving a legitimate skip *upstream*,
+by publishing one aggregator check that is only ever `success` or `failure` -
+`dbt-app`'s `dbt-app CI merge readiness` and `noa-whisper-app`'s
+`all_builds_passed` both do this - so the promotion gate never has to interpret a
+skip.
+
+Without `SPECIFIC_COMMIT_CHECK_NAME`, `StatusSuccess` comes from GitHub's own
+status check rollup for the commit, unchanged.
+
+With `--verbose`, any commit held back by its required checks is listed under the
+table with one line per required name, so a stalled promotion can be diagnosed
+from the job log.
 
 ## Pre commit
 
