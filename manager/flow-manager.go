@@ -18,20 +18,20 @@ func checkGithubToken(githubToken string) error {
 }
 
 // Manage will do the necessary actions to move the head from one branch to another
-func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, lastCommitsNumber int, force, dryRun bool) ([]EvaluationResult, error) {
+func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, acceptSkippedChecks bool, lastCommitsNumber int, force, dryRun bool) ([]EvaluationResult, error) {
 	err := checkGithubToken(githubToken)
 	if err != nil {
 		return nil, err
 	}
 	parsedExpression := expr.MustParse(expression)
 	gm := github.New(githubToken)
-	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep)
+	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep, acceptSkippedChecks)
 	if nil != err {
 		return nil, err
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
-	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificChecksNames, sep)
+	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificChecksNames, sep, acceptSkippedChecks)
 	if nil != err {
 		return nil, err
 	}
