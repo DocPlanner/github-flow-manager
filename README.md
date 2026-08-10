@@ -11,6 +11,7 @@
   - [Help](#help)
   - [Example](#example)
   - [How specific check names are evaluated](#how-specific-check-names-are-evaluated)
+  - [Fetching a commit's checks](#fetching-a-commits-checks)
   - [Pre commit](#pre-commit)
   - [Expressions](#expressions)
     - [Available variables](#available-variables)
@@ -41,6 +42,9 @@ Flags:
       --accept-skipped-checks
                               Accept a required check GitHub reports as SKIPPED as satisfied
   -c, --commits-number int    Number of commits to get under evaluation (>0, <=100) (default 100)
+      --check-suites-number int
+                              Check suites to fetch per commit in the first page (>0, <=100) (default 50)
+      --contexts-number int   Status checks to fetch per commit in the first page (>0, <=100) (default 50)
   -d, --dry-run               Don't modify repository
   -f, --force                 Use the force Luke... - Changes branch HEAD with force
   -t, --github-token string   GitHub token (can be passed also as GITHUB_TOKEN env variable
@@ -102,6 +106,21 @@ status check rollup for the commit, unchanged.
 With `--verbose`, any commit held back by its required checks is listed under the
 table with one line per required name, so a stalled promotion can be diagnosed
 from the job log.
+
+## Fetching a commit's checks
+
+GitHub returns a commit's status checks and check suites as connections capped at **100 entries per
+page**, and repositories with a lot of CI exceed that. `--contexts-number` and
+`--check-suites-number` size only the *first* page: anything beyond it is fetched on demand, per
+commit, and only for commits that are examined and have not already been satisfied. So these flags
+trade the number of requests against the size of each one — lowering them does not cause a check to
+be missed, and a commit is never judged on a partial view.
+
+They default to 50 rather than the maximum because the ceiling is not only rate limit but GitHub's
+own query execution time: on a repository with enough CI, a first page of 100 × 100 comes back as
+`502` or `504` instead of an answer. The server-side work is roughly
+`--commits-number × (--contexts-number + --check-suites-number)`, so lowering any of the three helps.
+Lower `--commits-number` last, since unlike the other two it changes which commits are considered.
 
 ## Pre commit
 

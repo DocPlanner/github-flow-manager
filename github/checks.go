@@ -32,6 +32,28 @@ type checkResult struct {
 // noVerdictYet is shown for a result GitHub has not concluded yet.
 const noVerdictYet = "NO_CONCLUSION_YET"
 
+// checkSources is everything read for one commit that can carry a required check name.
+//
+// It is a struct rather than the query Edge because two of the three sources are paginated
+// connections: GitHub caps checkSuites and statusCheckRollup.contexts at 100 entries per page, and
+// repositories with a lot of CI exceed that. Later pages append to these slices and the commit is
+// evaluated again, so a verdict is never reached on a partial view.
+type checkSources struct {
+	statuses       []Context
+	rollupContexts []RollupContext
+	suites         []CheckSuiteNode
+}
+
+// sourcesFromEdge pulls the three places a required check name can be reported from one commit of
+// the history query.
+func sourcesFromEdge(edge Edge) checkSources {
+	return checkSources{
+		statuses:       edge.Node.Status.Contexts,
+		rollupContexts: edge.Node.StatusCheckRollup.Contexts.Nodes,
+		suites:         edge.Node.CheckSuites.Nodes,
+	}
+}
+
 // splitCheckNames splits the required check names supplied on the command line,
 // dropping whitespace and empty entries so that a stray separator (`a,b,` or
 // `a, b`) cannot silently add a name that can never be satisfied.
@@ -83,7 +105,7 @@ func classifyConclusion(conclusion githubv4.String, acceptSkipped bool) checkOut
 
 // classifyCheckRun classifies a single check run. Its status wins over its
 // conclusion: a run that has not completed cannot have a trustworthy verdict.
-func classifyCheckRun(checkRun CheckRunNodes, acceptSkipped bool) checkResult {
+func classifyCheckRun(checkRun RollupCheckRun, acceptSkipped bool) checkResult {
 	if checkRun.Status != "" && githubv4.CheckStatusState(checkRun.Status) != githubv4.CheckStatusStateCompleted {
 		return checkResult{outcome: outcomePending, verdict: string(checkRun.Status)}
 	}
@@ -126,33 +148,44 @@ func classifyStatusContext(ctx Context) checkResult {
 // all three are searched. One name legitimately matching several results is
 // normal: while a merge queue is active, a commit is built twice, once for the
 // queue run and once for the push run, and both report the same workflow name.
-func collectResults(name string, edge Edge, acceptSkipped bool) []checkResult {
+func collectResults(name string, sources checkSources, acceptSkipped bool) []checkResult {
 	var results []checkResult
 
 	// A commit status set directly on the commit (the classic statuses API).
-	for _, ctx := range edge.Node.Status.Contexts {
+	for _, ctx := range sources.statuses {
 		if githubv4.String(name) == ctx.Context {
 			results = append(results, classifyStatusContext(ctx))
 		}
 	}
 
-	for _, checkSuite := range edge.Node.CheckSuites.Nodes {
-		// The required name can be the name of the workflow itself, in which
-		// case the suite's conclusion is the workflow run's verdict.
+	// The status-check rollup, which carries both check runs and commit statuses as a single flat
+	// list, latest-per-name. This is where a required "workflow / job" check is found.
+	for _, ctx := range sources.rollupContexts {
+		switch ctx.Typename {
+		case "CheckRun":
+			if githubv4.String(name) == ctx.CheckRun.Name {
+				results = append(results, classifyCheckRun(ctx.CheckRun, acceptSkipped))
+			}
+		case "StatusContext":
+			if githubv4.String(name) == ctx.StatusContext.Context {
+				results = append(results, classifyStatusContext(Context{
+					Context: ctx.StatusContext.Context,
+					State:   ctx.StatusContext.State,
+				}))
+			}
+		}
+	}
+
+	// Or the required name is the name of the workflow itself, in which case the suite's conclusion
+	// is the workflow run's verdict. Suites are still read separately because a workflow whose jobs
+	// were all skipped contributes no check run to the rollup at all.
+	for _, checkSuite := range sources.suites {
 		if (checkSuite.WorkflowRun != WorkflowRun{}) && githubv4.String(name) == checkSuite.WorkflowRun.Workflow.Name {
 			conclusion := checkSuite.WorkflowRun.CheckSuite.Conclusion
 			results = append(results, checkResult{
 				outcome: classifyConclusion(conclusion, acceptSkipped),
 				verdict: verdictOf(conclusion),
 			})
-		}
-
-		// Or the name of an individual check run inside the suite, which is how
-		// a required "workflow / job" check appears.
-		for _, checkRun := range checkSuite.CheckRuns.Nodes {
-			if githubv4.String(name) == checkRun.Name {
-				results = append(results, classifyCheckRun(checkRun, acceptSkipped))
-			}
 		}
 	}
 
@@ -162,8 +195,8 @@ func collectResults(name string, edge Edge, acceptSkipped bool) []checkResult {
 // evaluateCheckName applies "nothing missing, nothing pending, nothing red" to a
 // single required check name and returns whether it is satisfied plus a line for
 // the summary.
-func evaluateCheckName(name string, edge Edge, acceptSkipped bool) (bool, string) {
-	results := collectResults(name, edge, acceptSkipped)
+func evaluateCheckName(name string, sources checkSources, acceptSkipped bool) (bool, string) {
+	results := collectResults(name, sources, acceptSkipped)
 	if len(results) == 0 {
 		return false, fmt.Sprintf("%s: NEVER RAN - no commit status, workflow run or check run carries this name", name)
 	}
@@ -204,7 +237,7 @@ func evaluateCheckName(name string, edge Edge, acceptSkipped bool) (bool, string
 // Duplicate results per name are routine, which is what made both directions of
 // that bug reachable: a merge queue builds a commit twice, and a reusable
 // workflow called by several callers reports its check once per caller.
-func evaluateSpecificChecks(edge Edge, checkNames []string, acceptSkipped bool) (bool, []string) {
+func evaluateSpecificChecks(sources checkSources, checkNames []string, acceptSkipped bool) (bool, []string) {
 	if len(checkNames) == 0 {
 		// Names were asked for but none are usable. Fail closed: an empty
 		// requirement set would make every commit vacuously promotable.
@@ -214,7 +247,7 @@ func evaluateSpecificChecks(edge Edge, checkNames []string, acceptSkipped bool) 
 	statusSuccess := true
 	summary := make([]string, 0, len(checkNames))
 	for _, name := range checkNames {
-		passed, line := evaluateCheckName(name, edge, acceptSkipped)
+		passed, line := evaluateCheckName(name, sources, acceptSkipped)
 		if !passed {
 			statusSuccess = false
 		}

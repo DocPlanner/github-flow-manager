@@ -19,33 +19,35 @@ const (
 var dbtAppChecks = []string{checkBuildPush, checkAppTests, checkDbtTests}
 
 // completedRun builds a check run that finished with the given conclusion.
-func completedRun(name string, conclusion githubv4.CheckConclusionState) CheckRunNodes {
-	return CheckRunNodes{
-		Name:       githubv4.String(name),
-		Status:     githubv4.String(githubv4.CheckStatusStateCompleted),
-		Conclusion: githubv4.String(conclusion),
+func completedRun(name string, conclusion githubv4.CheckConclusionState) RollupContext {
+	return RollupContext{
+		Typename: "CheckRun",
+		CheckRun: RollupCheckRun{
+			Name:       githubv4.String(name),
+			Status:     githubv4.String(githubv4.CheckStatusStateCompleted),
+			Conclusion: githubv4.String(conclusion),
+		},
 	}
 }
 
 // unfinishedRun builds a check run that has not concluded yet, the way GitHub
 // reports it: a non-completed status and a null conclusion.
-func unfinishedRun(name string, status githubv4.CheckStatusState) CheckRunNodes {
-	return CheckRunNodes{
-		Name:   githubv4.String(name),
-		Status: githubv4.String(status),
+func unfinishedRun(name string, status githubv4.CheckStatusState) RollupContext {
+	return RollupContext{
+		Typename: "CheckRun",
+		CheckRun: RollupCheckRun{
+			Name:   githubv4.String(name),
+			Status: githubv4.String(status),
+		},
 	}
 }
 
-// edgeWithRuns puts every check run in its own check suite, which is how GitHub
-// reports runs that came from separate workflow runs - for instance the same
-// workflow executed once for a merge-queue run and once for the push run.
-func edgeWithRuns(runs ...CheckRunNodes) Edge {
-	suites := make([]CheckSuiteNode, 0, len(runs))
-	for _, run := range runs {
-		suites = append(suites, CheckSuiteNode{CheckRuns: CheckRuns{Nodes: []CheckRunNodes{run}}})
-	}
-
-	return Edge{Node: EdgeRootNode{CheckSuites: CheckSuites{Nodes: suites}}}
+// edgeWithRuns puts check runs where GitHub reports them for our purposes: the status-check
+// rollup, a single flat list per commit regardless of which suite each run came from.
+func edgeWithRuns(runs ...RollupContext) Edge {
+	return Edge{Node: EdgeRootNode{StatusCheckRollup: StatusCheckRollup{
+		Contexts: StatusCheckRollupContexts{Nodes: runs},
+	}}}
 }
 
 // edgeWithStatusContexts builds a commit carrying classic commit statuses rather
@@ -78,7 +80,7 @@ func TestDuplicateSuccessNoLongerMasksAFailure(t *testing.T) {
 		completedRun(checkDbtTests, githubv4.CheckConclusionStateFailure),
 	)
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 
 	if statusSuccess {
 		t.Fatalf("a commit whose %s failed must not be promotable, summary: %v", checkDbtTests, summary)
@@ -97,7 +99,7 @@ func TestDuplicateSuccessNoLongerMasksAMissingCheck(t *testing.T) {
 		completedRun(checkAppTests, githubv4.CheckConclusionStateSuccess),
 	)
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 
 	if statusSuccess {
 		t.Fatalf("a commit missing %s entirely must not be promotable, summary: %v", checkDbtTests, summary)
@@ -116,7 +118,7 @@ func TestExtraSuccessfulRunNoLongerBlocks(t *testing.T) {
 		completedRun(checkDbtTests, githubv4.CheckConclusionStateSuccess),
 	)
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 
 	if !statusSuccess {
 		t.Fatalf("every required check passed, so a duplicate run must not block promotion, summary: %v", summary)
@@ -142,13 +144,13 @@ func TestSkippedPolicyIsOptIn(t *testing.T) {
 		completedRun(checkDbtTests, githubv4.CheckConclusionStateSkipped),
 	)
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 	if statusSuccess {
 		t.Fatalf("by default a skipped required check must not satisfy the gate, summary: %v", summary)
 	}
 	assertSummaryMentions(t, summary, checkDbtTests, "did not pass")
 
-	if statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, true); !statusSuccess {
+	if statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, true); !statusSuccess {
 		t.Fatalf("with acceptSkippedChecks a skipped required check must be accepted, summary: %v", summary)
 	}
 }
@@ -168,7 +170,7 @@ func TestNeutralNeverSatisfies(t *testing.T) {
 	for _, acceptSkipped := range []bool{false, true} {
 		edge := edgeWithRuns(completedRun(hotfixSkipTests, githubv4.CheckConclusionStateNeutral))
 
-		statusSuccess, summary := evaluateSpecificChecks(edge, names, acceptSkipped)
+		statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), names, acceptSkipped)
 		if statusSuccess {
 			t.Fatalf("a neutral %s must never authorise promotion (acceptSkippedChecks=%t), summary: %v", hotfixSkipTests, acceptSkipped, summary)
 		}
@@ -176,7 +178,7 @@ func TestNeutralNeverSatisfies(t *testing.T) {
 
 	// And the authorised case still promotes.
 	edge := edgeWithRuns(completedRun(hotfixSkipTests, githubv4.CheckConclusionStateSuccess))
-	if statusSuccess, summary := evaluateSpecificChecks(edge, names, false); !statusSuccess {
+	if statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), names, false); !statusSuccess {
 		t.Fatalf("a successful %s must authorise promotion, summary: %v", hotfixSkipTests, summary)
 	}
 }
@@ -196,7 +198,7 @@ func TestSingleNameReportedTwiceStillPromotes(t *testing.T) {
 		completedRun(loadContext, githubv4.CheckConclusionStateSuccess),
 	)
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, []string{loadContext}, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), []string{loadContext}, false)
 	if !statusSuccess {
 		t.Fatalf("four successful results for the only required name must promote, summary: %v", summary)
 	}
@@ -223,11 +225,15 @@ func TestPendingResultsBlock(t *testing.T) {
 			completedRun(checkDbtTests, githubv4.CheckConclusionStateSuccess),
 			unfinishedRun(checkDbtTests, githubv4.CheckStatusStateInProgress),
 		),
-		"workflow run with no conclusion yet": Edge{Node: EdgeRootNode{CheckSuites: CheckSuites{Nodes: []CheckSuiteNode{
-			{CheckRuns: CheckRuns{Nodes: []CheckRunNodes{completedRun(checkBuildPush, githubv4.CheckConclusionStateSuccess)}}},
-			{CheckRuns: CheckRuns{Nodes: []CheckRunNodes{completedRun(checkAppTests, githubv4.CheckConclusionStateSuccess)}}},
-			{WorkflowRun: WorkflowRun{Workflow: Workflow{Name: githubv4.String(checkDbtTests)}}},
-		}}}},
+		"workflow run with no conclusion yet": Edge{Node: EdgeRootNode{
+			StatusCheckRollup: StatusCheckRollup{Contexts: StatusCheckRollupContexts{Nodes: []RollupContext{
+				completedRun(checkBuildPush, githubv4.CheckConclusionStateSuccess),
+				completedRun(checkAppTests, githubv4.CheckConclusionStateSuccess),
+			}}},
+			CheckSuites: CheckSuites{Nodes: []CheckSuiteNode{
+				{WorkflowRun: WorkflowRun{Workflow: Workflow{Name: githubv4.String(checkDbtTests)}}},
+			}},
+		}},
 		"pending commit status": edgeWithStatusContexts(
 			Context{Context: checkBuildPush, State: githubv4.String(githubv4.StatusStateSuccess)},
 			Context{Context: checkAppTests, State: githubv4.String(githubv4.StatusStateSuccess)},
@@ -237,7 +243,7 @@ func TestPendingResultsBlock(t *testing.T) {
 
 	for name, edge := range tests {
 		t.Run(name, func(t *testing.T) {
-			statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+			statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 			if statusSuccess {
 				t.Fatalf("promoting now would pre-empt the verdict of %s, summary: %v", checkDbtTests, summary)
 			}
@@ -267,7 +273,7 @@ func TestFailingConclusionsBlock(t *testing.T) {
 				completedRun(checkDbtTests, conclusion),
 			)
 
-			statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+			statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 			if statusSuccess {
 				t.Fatalf("%s must not be treated as green, summary: %v", conclusion, summary)
 			}
@@ -293,7 +299,7 @@ func TestAllGreenPasses(t *testing.T) {
 
 	for name, edge := range tests {
 		t.Run(name, func(t *testing.T) {
-			statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+			statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 			if !statusSuccess {
 				t.Fatalf("all required checks are green, summary: %v", summary)
 			}
@@ -317,7 +323,7 @@ func TestErroredCommitStatusBlocks(t *testing.T) {
 				Context{Context: checkDbtTests, State: githubv4.String(state)},
 			)
 
-			statusSuccess, summary := evaluateSpecificChecks(edge, dbtAppChecks, false)
+			statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), dbtAppChecks, false)
 			if statusSuccess {
 				t.Fatalf("a commit status of %s must block promotion, summary: %v", state, summary)
 			}
@@ -330,11 +336,11 @@ func TestErroredCommitStatusBlocks(t *testing.T) {
 func TestWorkflowRunNameIsMatched(t *testing.T) {
 	names := []string{checkAppTests}
 
-	if statusSuccess, summary := evaluateSpecificChecks(edgeWithWorkflowRun(checkAppTests, githubv4.CheckConclusionStateSuccess), names, false); !statusSuccess {
+	if statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edgeWithWorkflowRun(checkAppTests, githubv4.CheckConclusionStateSuccess)), names, false); !statusSuccess {
 		t.Fatalf("a successful workflow run must satisfy its required name, summary: %v", summary)
 	}
 
-	statusSuccess, summary := evaluateSpecificChecks(edgeWithWorkflowRun(checkAppTests, githubv4.CheckConclusionStateFailure), names, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edgeWithWorkflowRun(checkAppTests, githubv4.CheckConclusionStateFailure)), names, false)
 	if statusSuccess {
 		t.Fatalf("a failed workflow run must block promotion, summary: %v", summary)
 	}
@@ -345,7 +351,7 @@ func TestWorkflowRunNameIsMatched(t *testing.T) {
 func TestMissingNameBlocks(t *testing.T) {
 	edge := edgeWithRuns(completedRun("some_other_check", githubv4.CheckConclusionStateSuccess))
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, []string{checkAppTests}, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), []string{checkAppTests}, false)
 	if statusSuccess {
 		t.Fatalf("a required check that never ran must block promotion, summary: %v", summary)
 	}
@@ -357,7 +363,7 @@ func TestMissingNameBlocks(t *testing.T) {
 func TestNoUsableCheckNamesFailsClosed(t *testing.T) {
 	edge := edgeWithRuns(completedRun(checkAppTests, githubv4.CheckConclusionStateSuccess))
 
-	statusSuccess, summary := evaluateSpecificChecks(edge, nil, false)
+	statusSuccess, summary := evaluateSpecificChecks(sourcesFromEdge(edge), nil, false)
 	if statusSuccess {
 		t.Fatalf("an empty set of required names must not promote anything, summary: %v", summary)
 	}
@@ -417,7 +423,7 @@ func TestHydrateCommitsFallsBackToRollup(t *testing.T) {
 			// decides on this path.
 			edge := edgeWithRuns(completedRun(checkAppTests, githubv4.CheckConclusionStateFailure))
 			edge.Node.Oid = "cafebabe"
-			edge.Node.StatusCheckRollup = StatusCheckRollup{State: githubv4.String(test.rollupState)}
+			edge.Node.StatusCheckRollup.State = githubv4.String(test.rollupState)
 
 			commits := hydrateCommits(queryWithEdges(edge), "", ",", false)
 
@@ -445,7 +451,7 @@ func TestHydrateCommitsWithSpecificChecks(t *testing.T) {
 	)
 	edge.Node.Oid = "7d7d1c8b"
 	// A green rollup, to prove it is ignored once specific names are requested.
-	edge.Node.StatusCheckRollup = StatusCheckRollup{State: githubv4.String(githubv4.StatusStateSuccess)}
+	edge.Node.StatusCheckRollup.State = githubv4.String(githubv4.StatusStateSuccess)
 	names := strings.Join(dbtAppChecks, ",")
 
 	commits := hydrateCommits(queryWithEdges(edge), names, ",", false)
