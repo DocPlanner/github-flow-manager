@@ -31,6 +31,9 @@ jobs:
   unit-tests:
     name: Unit Tests
     runs-on: ubuntu-latest
+    # Reading the code is all this job does; nothing here writes back to the repository.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v2
       - name: Configure Go
