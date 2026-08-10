@@ -7,18 +7,21 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Docplanner/github-flow-manager/github"
 	flow_manager "github.com/Docplanner/github-flow-manager/manager"
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 )
 
 var (
-	commitsNumber *int
-	githubToken   *string
-	force         *bool
-	verbose       *bool
-	dryRun        *bool
-	separator     *string
+	commitsNumber     *int
+	contextsNumber    *int
+	checkSuitesNumber *int
+	githubToken       *string
+	force             *bool
+	verbose           *bool
+	dryRun            *bool
+	separator         *string
 )
 
 const (
@@ -36,6 +39,50 @@ func checkMinimumArgs(args []string) error {
 		}
 	}
 	return nil
+}
+
+// printUnsatisfiedChecks explains why commits failed their status checks, per commit and per check
+// name. Without this a stuck promotion looks identical whether a check went red or the configured
+// name matches nothing on the commit at all — and those need opposite fixes.
+func printUnsatisfiedChecks(results []flow_manager.EvaluationResult) {
+	var lines []string
+
+	for _, res := range results {
+		if res.Commit.StatusSuccess || len(res.Commit.CheckResults) == 0 {
+			continue
+		}
+
+		byState := map[string][]string{}
+		var order []string
+		for _, cr := range res.Commit.CheckResults {
+			if cr.State == github.CheckPassed {
+				continue
+			}
+			label := cr.State.String()
+			if _, seen := byState[label]; !seen {
+				order = append(order, label)
+			}
+			byState[label] = append(byState[label], cr.Name)
+		}
+		if len(order) == 0 {
+			continue
+		}
+
+		var groups []string
+		for _, label := range order {
+			groups = append(groups, label+": "+strings.Join(byState[label], ", "))
+		}
+		lines = append(lines, "  "+res.Commit.SHA[:8]+"  "+strings.Join(groups, " | "))
+	}
+
+	if len(lines) == 0 {
+		return
+	}
+
+	fmt.Println("\nUNSATISFIED STATUS CHECKS (\"not found\" means no status, check run or workflow of that name exists on the commit):")
+	for _, l := range lines {
+		fmt.Println(l)
+	}
 }
 
 // rootCmd represents the root command
@@ -68,7 +115,7 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 			*githubToken = os.Getenv("GITHUB_TOKEN")
 		}
 
-		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *commitsNumber, *force, *dryRun)
+		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *commitsNumber, *contextsNumber, *checkSuitesNumber, *force, *dryRun)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -105,6 +152,8 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 
 		table.Render()
 
+		printUnsatisfiedChecks(results)
+
 		endingMessage := "THERE IS NO COMMITS PASSING EVALUATION"
 		if results[len(results)-1].Result {
 			endingMessage = "NO MORE COMMITS WERE EXAMINED BECAUSE LAST ONE EVALUATED SUCCESSFULLY"
@@ -122,6 +171,8 @@ func Execute() {
 
 func init() {
 	commitsNumber = rootCmd.Flags().IntP("commits-number", "c", 100, "Number of commits to get under evaluation (>0, <=100)")
+	contextsNumber = rootCmd.Flags().Int("contexts-number", 50, "Status checks to fetch per commit in the first page (>0, <=100). Anything beyond it is fetched on demand, so this trades API calls against page size rather than losing checks")
+	checkSuitesNumber = rootCmd.Flags().Int("check-suites-number", 50, "Check suites to fetch per commit in the first page (>0, <=100). Same trade-off as --contexts-number")
 	githubToken = rootCmd.Flags().StringP("github-token", "t", "", "GitHub token (can be passed also as GITHUB_TOKEN env variable")
 	force = rootCmd.Flags().BoolP("force", "f", false, "Use the force Luke... - Changes branch HEAD with force")
 	verbose = rootCmd.Flags().BoolP("verbose", "v", false, "Print table with commits evaluation status")

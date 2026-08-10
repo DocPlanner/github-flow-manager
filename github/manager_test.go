@@ -7,15 +7,17 @@ import (
 	"github.com/shurcooL/githubv4"
 )
 
-// These are characterization tests: they pin the CURRENT behaviour of
-// hydrateCommits and PickFirstParentCommits, defects included. Cases that assert
-// a known defect are marked with a KNOWN DEFECT comment.
+// These began as characterization tests pinning the behaviour of hydrateCommits and
+// PickFirstParentCommits before the fix for issue #36, defects included. They were then ported to
+// the reshaped query with exactly the assertions for those defects flipped — each marked
+// "WAS A DEFECT, NOW FIXED" and stating what it used to assert. Every other expectation is
+// unchanged from the pre-fix run, which is what makes them useful: a different one moving means
+// something regressed.
 //
-// Not covered here, deliberately: the defect where a required check falls outside
-// checkSuites(first: 20) / checkRuns(first: 25) and is therefore never seen. That is a
-// property of the GraphQL query, not of hydrateCommits — which only ever sees whatever
-// was already fetched, so a fixture holding 21 suites would simply have all 21 read.
-// It is covered instead by the end-to-end verdict baseline in testdata/baseline/.
+// Not covered here, deliberately: whether the query fetches enough of a commit's checks in the
+// first place. That is a property of the GraphQL query, not of hydrateCommits — which only ever
+// sees whatever was fetched — so no fixture can express it. TestChecksResolvedAcrossPages covers
+// the resolution half, and testdata/baseline/ covers it end to end against real repositories.
 
 // success is the only value hydrateCommits/checkRunSet treat as a passing check.
 const success = githubv4.String(githubv4.StatusStateSuccess)
@@ -49,31 +51,56 @@ func withStatusContext(n EdgeRootNode, name, state string) EdgeRootNode {
 	return n
 }
 
-func checkRun(name, conclusion string) CheckRunNodes {
-	return CheckRunNodes{
-		Name:       githubv4.String(name),
-		Conclusion: githubv4.String(conclusion),
+// checkRun builds a completed CheckRun member of the statusCheckRollup contexts union.
+func checkRun(name, conclusion string) RollupContext {
+	return RollupContext{
+		Typename: "CheckRun",
+		CheckRun: RollupCheckRun{
+			Name:       githubv4.String(name),
+			Status:     githubv4.String(githubv4.CheckStatusStateCompleted),
+			Conclusion: githubv4.String(conclusion),
+		},
 	}
 }
 
-// withCheckRunSuite adds a check suite whose WorkflowRun is the zero value, so
-// checkRunSet only looks at its CheckRuns.Nodes.
-func withCheckRunSuite(n EdgeRootNode, runs ...CheckRunNodes) EdgeRootNode {
-	n.CheckSuites.Nodes = append(n.CheckSuites.Nodes, CheckSuiteNode{
-		CheckRuns: CheckRuns{Nodes: runs},
-	})
+// pendingCheckRun builds a CheckRun that has not finished, so it has no conclusion yet.
+func pendingCheckRun(name string) RollupContext {
+	return RollupContext{
+		Typename: "CheckRun",
+		CheckRun: RollupCheckRun{
+			Name:   githubv4.String(name),
+			Status: githubv4.String(githubv4.CheckStatusStateInProgress),
+		},
+	}
+}
+
+// rollupStatusContext builds the StatusContext member of the same union — a classic commit status
+// as reported through the rollup rather than through Commit.status.
+func rollupStatusContext(name, state string) RollupContext {
+	return RollupContext{
+		Typename: "StatusContext",
+		StatusContext: RollupStatusContext{
+			Context: githubv4.String(name),
+			State:   githubv4.String(state),
+		},
+	}
+}
+
+// withCheckRuns adds entries to the commit's statusCheckRollup contexts, which is where check runs
+// are read from.
+func withCheckRuns(n EdgeRootNode, runs ...RollupContext) EdgeRootNode {
+	n.StatusCheckRollup.Contexts.Nodes = append(n.StatusCheckRollup.Contexts.Nodes, runs...)
 	return n
 }
 
 // withWorkflowSuite adds a check suite identified by its workflow name, whose
 // verdict lives in WorkflowRun.CheckSuite.Conclusion.
-func withWorkflowSuite(n EdgeRootNode, workflowName, conclusion string, runs ...CheckRunNodes) EdgeRootNode {
+func withWorkflowSuite(n EdgeRootNode, workflowName, conclusion string) EdgeRootNode {
 	n.CheckSuites.Nodes = append(n.CheckSuites.Nodes, CheckSuiteNode{
 		WorkflowRun: WorkflowRun{
 			Workflow:   Workflow{Name: githubv4.String(workflowName)},
 			CheckSuite: CheckSuite{Conclusion: githubv4.String(conclusion)},
 		},
-		CheckRuns: CheckRuns{Nodes: runs},
 	})
 	return n
 }
@@ -112,7 +139,7 @@ func TestHydrateCommits(t *testing.T) {
 		},
 		{
 			name:   "check run with SUCCESS conclusion passes",
-			nodes:  []EdgeRootNode{withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", string(success)))},
+			nodes:  []EdgeRootNode{withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", string(success)))},
 			checks: "ci",
 			sep:    ",",
 			want:   []bool{true},
@@ -125,41 +152,74 @@ func TestHydrateCommits(t *testing.T) {
 			want:   []bool{true},
 		},
 		{
-			// KNOWN DEFECT (double count): the requested name is found twice —
-			// once as a classic status, once as a check run — so checksPassed
-			// reaches 2 while numChecks is 1, and the `checksPassed == numChecks`
-			// gate rejects a commit whose check actually succeeded. A later step
-			// will intentionally flip this expectation to true.
-			name: "same name as both classic status and check run is double counted and fails",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			// WAS A DEFECT, NOW FIXED: this expectation was false. The name was found twice —
+			// once as a classic status, once as a check run — which drove checksPassed to 2
+			// against numChecks of 1, so the old `checksPassed == numChecks` gate rejected a
+			// commit whose check had in fact succeeded. State per name replaces the counter.
+			// Observed live on a consumer repository that publishes its aggregate required check
+			// both ways on the same commit.
+			name: "same name as both classic status and check run passes",
+			nodes: []EdgeRootNode{withCheckRuns(
 				withStatusContext(commitNode("sha1", "msg1"), "ci", string(success)),
 				checkRun("ci", string(success)),
 			)},
 			checks: "ci",
 			sep:    ",",
-			want:   []bool{false},
+			want:   []bool{true},
 		},
 		{
-			// KNOWN DEFECT (double count): re-runs produce several check runs with
-			// the same name; each SUCCESS increments the counter. A later step will
-			// intentionally flip this expectation to true.
-			name: "duplicate successful check runs in one suite are double counted and fail",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			// WAS A DEFECT, NOW FIXED: this expectation was false. Re-runs produce several check
+			// runs of the same name and each success used to increment the counter past numChecks.
+			name: "duplicate successful check runs of the same name pass",
+			nodes: []EdgeRootNode{withCheckRuns(
 				commitNode("sha1", "msg1"),
 				checkRun("ci", string(success)),
 				checkRun("ci", string(success)),
 			)},
 			checks: "ci",
 			sep:    ",",
-			want:   []bool{false},
+			want:   []bool{true},
 		},
 		{
-			// KNOWN DEFECT (double count): same as above, across two suites.
-			// A later step will intentionally flip this expectation to true.
-			name: "duplicate successful check runs across suites are double counted and fail",
-			nodes: []EdgeRootNode{withCheckRunSuite(
-				withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", string(success))),
+			// WAS A DEFECT, NOW FIXED: this expectation was false. As above, with the duplicates
+			// arriving from separate sources rather than together.
+			name: "duplicate successful check runs from separate sources pass",
+			nodes: []EdgeRootNode{withCheckRuns(
+				withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", string(success))),
 				checkRun("ci", string(success)),
+			)},
+			checks: "ci",
+			sep:    ",",
+			want:   []bool{true},
+		},
+		{
+			// A success anywhere satisfies the name: the old code already counted any matching
+			// success, so a name that both failed and succeeded must keep passing.
+			name: "name that failed in one place and succeeded in another passes",
+			nodes: []EdgeRootNode{withCheckRuns(
+				commitNode("sha1", "msg1"),
+				checkRun("ci", "FAILURE"),
+				checkRun("ci", string(success)),
+			)},
+			checks: "ci",
+			sep:    ",",
+			want:   []bool{true},
+		},
+		{
+			name: "classic status reported through the rollup passes",
+			nodes: []EdgeRootNode{withCheckRuns(
+				commitNode("sha1", "msg1"),
+				rollupStatusContext("ci", string(success)),
+			)},
+			checks: "ci",
+			sep:    ",",
+			want:   []bool{true},
+		},
+		{
+			name: "check run still running does not pass",
+			nodes: []EdgeRootNode{withCheckRuns(
+				commitNode("sha1", "msg1"),
+				pendingCheckRun("ci"),
 			)},
 			checks: "ci",
 			sep:    ",",
@@ -168,7 +228,7 @@ func TestHydrateCommits(t *testing.T) {
 		{
 			// A missing check is indistinguishable from a failing one.
 			name: "requested name absent from every source fails",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			nodes: []EdgeRootNode{withCheckRuns(
 				withStatusContext(commitNode("sha1", "msg1"), "other-status", string(success)),
 				checkRun("other-run", string(success)),
 			)},
@@ -178,21 +238,21 @@ func TestHydrateCommits(t *testing.T) {
 		},
 		{
 			name:   "check run with FAILURE conclusion fails",
-			nodes:  []EdgeRootNode{withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", "FAILURE"))},
+			nodes:  []EdgeRootNode{withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", "FAILURE"))},
 			checks: "ci",
 			sep:    ",",
 			want:   []bool{false},
 		},
 		{
 			name:   "check run with NEUTRAL conclusion fails",
-			nodes:  []EdgeRootNode{withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", "NEUTRAL"))},
+			nodes:  []EdgeRootNode{withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", "NEUTRAL"))},
 			checks: "ci",
 			sep:    ",",
 			want:   []bool{false},
 		},
 		{
 			name:   "check run with SKIPPED conclusion fails",
-			nodes:  []EdgeRootNode{withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", "SKIPPED"))},
+			nodes:  []EdgeRootNode{withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", "SKIPPED"))},
 			checks: "ci",
 			sep:    ",",
 			want:   []bool{false},
@@ -235,7 +295,7 @@ func TestHydrateCommits(t *testing.T) {
 		},
 		{
 			name: "two requested names with only one passing fails",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			nodes: []EdgeRootNode{withCheckRuns(
 				commitNode("sha1", "msg1"),
 				checkRun("a", string(success)),
 				checkRun("b", "FAILURE"),
@@ -246,7 +306,7 @@ func TestHydrateCommits(t *testing.T) {
 		},
 		{
 			name: "two requested names each passing once via a different source succeeds",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			nodes: []EdgeRootNode{withCheckRuns(
 				withStatusContext(commitNode("sha1", "msg1"), "a", string(success)),
 				checkRun("b", string(success)),
 			)},
@@ -256,7 +316,7 @@ func TestHydrateCommits(t *testing.T) {
 		},
 		{
 			name: "custom separator splits the requested names",
-			nodes: []EdgeRootNode{withCheckRunSuite(
+			nodes: []EdgeRootNode{withCheckRuns(
 				withStatusContext(commitNode("sha1", "msg1"), "a", string(success)),
 				checkRun("b", string(success)),
 			)},
@@ -267,8 +327,8 @@ func TestHydrateCommits(t *testing.T) {
 		{
 			name: "each commit in the history is evaluated independently and in order",
 			nodes: []EdgeRootNode{
-				withCheckRunSuite(commitNode("sha1", "msg1"), checkRun("ci", string(success))),
-				withCheckRunSuite(commitNode("sha2", "msg2"), checkRun("ci", "FAILURE")),
+				withCheckRuns(commitNode("sha1", "msg1"), checkRun("ci", string(success))),
+				withCheckRuns(commitNode("sha2", "msg2"), checkRun("ci", "FAILURE")),
 				withStatusContext(commitNode("sha3", "msg3"), "ci", string(success)),
 			},
 			checks: "ci",
@@ -323,9 +383,41 @@ func TestHydrateCommits(t *testing.T) {
 		if !got[0].AuthoredDate.Equal(authored) {
 			t.Errorf("AuthoredDate = %v, want %v", got[0].AuthoredDate, authored)
 		}
-		// SpecificCheckPassed is never populated by hydrateCommits.
-		if got[0].SpecificCheckPassed {
-			t.Errorf("SpecificCheckPassed = true, want false")
+	})
+
+	t.Run("reports why each requested check did not pass", func(t *testing.T) {
+		node := withWorkflowSuite(
+			withCheckRuns(
+				commitNode("sha1", "msg1"),
+				checkRun("green", string(success)),
+				checkRun("red", "FAILURE"),
+				pendingCheckRun("running"),
+			),
+			"workflow-green", string(success),
+		)
+
+		got := hydrateCommits(newQuery(node), "green,red,running,absent,workflow-green", ",")
+		if len(got) != 1 {
+			t.Fatalf("got %d commits, want 1", len(got))
+		}
+
+		want := []CheckResult{
+			{Name: "green", State: CheckPassed},
+			{Name: "red", State: CheckFailed},
+			{Name: "running", State: CheckPending},
+			{Name: "absent", State: CheckNotFound},
+			{Name: "workflow-green", State: CheckPassed},
+		}
+		if len(got[0].CheckResults) != len(want) {
+			t.Fatalf("got %d results %v, want %d", len(got[0].CheckResults), got[0].CheckResults, len(want))
+		}
+		for i, w := range want {
+			if got[0].CheckResults[i] != w {
+				t.Errorf("result %d = %+v, want %+v", i, got[0].CheckResults[i], w)
+			}
+		}
+		if got[0].StatusSuccess {
+			t.Errorf("StatusSuccess = true, want false")
 		}
 	})
 
@@ -359,6 +451,47 @@ func TestHydrateCommits(t *testing.T) {
 			t.Errorf("Parents = %v, want nil", got[0].Parents)
 		}
 	})
+}
+
+// --- paging over a commit's check data --------------------------------------
+
+// A commit whose check data spans several pages must be judged on all of it. This covers the
+// resolution half of that contract — the part TopUpChecks performs once it has fetched a page —
+// without going near the network: state accumulates across pages and settle() re-publishes it.
+func TestChecksResolvedAcrossPages(t *testing.T) {
+	firstPage := withCheckRuns(commitNode("sha1", "msg1"), checkRun("a", string(success)))
+	firstPage.StatusCheckRollup.Contexts.PageInfo = PageInfo{HasNextPage: true, EndCursor: "cursor1"}
+
+	commits := hydrateCommits(newQuery(firstPage), "a,b", ",")
+	if len(commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(commits))
+	}
+	c := &commits[0]
+
+	if c.StatusSuccess {
+		t.Errorf("StatusSuccess = true after first page, want false: b has not been seen yet")
+	}
+	if !c.ChecksTruncated() {
+		t.Fatalf("ChecksTruncated() = false, want true: the rollup reported another page")
+	}
+
+	// What TopUpChecks does with the next page it fetches.
+	applyRollupContexts(c.states, []RollupContext{checkRun("b", string(success))})
+	c.settle()
+
+	if !c.StatusSuccess {
+		t.Errorf("StatusSuccess = false after the second page, want true: %+v", c.CheckResults)
+	}
+}
+
+func TestChecksNotTruncatedWhenConnectionsAreComplete(t *testing.T) {
+	commits := hydrateCommits(newQuery(withCheckRuns(commitNode("sha1", "msg1"), checkRun("a", string(success)))), "a", ",")
+	if len(commits) != 1 {
+		t.Fatalf("got %d commits, want 1", len(commits))
+	}
+	if commits[0].ChecksTruncated() {
+		t.Errorf("ChecksTruncated() = true, want false: neither connection reported another page")
+	}
 }
 
 // --- PickFirstParentCommits -------------------------------------------------
