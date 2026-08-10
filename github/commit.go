@@ -15,4 +15,19 @@ type Commit struct {
 	AuthoredDate        time.Time
 	AuthorName          string
 	SpecificCheckPassed bool
+
+	// Everything read so far that can satisfy a required name, plus what it takes to read the
+	// rest: the required names, the skip policy, and a cursor per paginated connection.
+	sources       checkSources
+	checkNames    []string
+	acceptSkipped bool
+	suitesPage    PageInfo
+	contextsPage  PageInfo
+}
+
+// ChecksTruncated reports whether some of this commit's check data was left unread because a
+// connection had further pages. A commit that already passed needs no more data; one that did not
+// may only be failing because the deciding check sits on a page nobody fetched.
+func (c *Commit) ChecksTruncated() bool {
+	return bool(c.suitesPage.HasNextPage) || bool(c.contextsPage.HasNextPage)
 }

@@ -18,20 +18,20 @@ func checkGithubToken(githubToken string) error {
 }
 
 // Manage will do the necessary actions to move the head from one branch to another
-func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, acceptSkippedChecks bool, lastCommitsNumber int, force, dryRun bool) ([]EvaluationResult, error) {
+func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expression string, specificChecksNames string, sep string, acceptSkippedChecks bool, contextsNumber, checkSuitesNumber int, lastCommitsNumber int, force, dryRun bool) ([]EvaluationResult, error) {
 	err := checkGithubToken(githubToken)
 	if err != nil {
 		return nil, err
 	}
 	parsedExpression := expr.MustParse(expression)
 	gm := github.New(githubToken)
-	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep, acceptSkippedChecks)
+	commits, err := gm.GetCommits(owner, repo, sourceBranch, lastCommitsNumber, specificChecksNames, sep, acceptSkippedChecks, contextsNumber, checkSuitesNumber)
 	if nil != err {
 		return nil, err
 	}
 	firstParentCommits := github.PickFirstParentCommits(commits)
 
-	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificChecksNames, sep, acceptSkippedChecks)
+	destinationCommits, err := gm.GetCommits(owner, repo, destinationBranch, 1, specificChecksNames, sep, acceptSkippedChecks, contextsNumber, checkSuitesNumber)
 	if nil != err {
 		return nil, err
 	}
@@ -43,6 +43,16 @@ func Manage(githubToken, owner, repo, sourceBranch, destinationBranch, expressio
 		if destinationCommits[0].SHA == commit.SHA {
 			fmt.Println("COMMIT ID: " + commit.SHA + " IS ALREADY IN " + destinationBranch + " branch. EXITING THE PROCESS WITHOUT ANY ACTION.")
 			return evaluationResultList, nil
+		}
+
+		// The first page of check data may not have covered every check on this commit. Reading the
+		// rest is only worth a request when the commit has not already passed, and only for the
+		// commits actually examined — which is why it happens here rather than in GetCommits: this
+		// loop stops at the first commit that passes, so the usual case costs nothing extra.
+		if !commit.StatusSuccess && commit.ChecksTruncated() {
+			if err := gm.TopUpChecks(owner, repo, &commit); err != nil {
+				return nil, err
+			}
 		}
 
 		evalContext := datasource.NewContextSimpleNative(map[string]interface{}{
