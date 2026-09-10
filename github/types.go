@@ -2,19 +2,6 @@ package github
 
 import "github.com/shurcooL/githubv4"
 
-// CheckRunNodes represents the checkRun status of the Nodes
-type CheckRunNodes struct {
-	Name       githubv4.String
-	Status     githubv4.String
-	Title      githubv4.String
-	Conclusion githubv4.String
-}
-
-// CheckRuns represents the check run of an array of Nodes
-type CheckRuns struct {
-	Nodes []CheckRunNodes
-}
-
 // Workflow represents the information of the Github Workflow
 type Workflow struct {
 	Name githubv4.String
@@ -31,15 +18,28 @@ type WorkflowRun struct {
 	CheckSuite CheckSuite
 }
 
-// CheckSuiteNode represents the information about the check suite information of the Node
+// CheckSuiteNode represents the information about the check suite information of the Node.
+//
+// It deliberately does not select the nested checkRuns connection. Check runs are read from
+// statusCheckRollup.contexts instead: nesting checkRuns under checkSuites multiplied the query's
+// node count by suites × runs for every commit, and made whether a run was visible at all depend on
+// where its suite happened to sort. This selection is only needed for a required name that is the
+// name of a *workflow* rather than of an individual run.
 type CheckSuiteNode struct {
 	WorkflowRun WorkflowRun
-	CheckRuns   CheckRuns `graphql:"checkRuns(first: 25)"`
 }
 
 // CheckSuites represents the information about the check suite of a slice of Nodes
 type CheckSuites struct {
-	Nodes []CheckSuiteNode
+	TotalCount githubv4.Int
+	PageInfo   PageInfo
+	Nodes      []CheckSuiteNode
+}
+
+// PageInfo carries a connection's cursor so the pages that did not fit can be fetched on demand.
+type PageInfo struct {
+	HasNextPage githubv4.Boolean
+	EndCursor   githubv4.String
 }
 
 // Context represents the information about the Context
@@ -48,7 +48,10 @@ type Context struct {
 	State   githubv4.String
 }
 
-// NodeStatus represents the information about a slice of Contexts
+// NodeStatus represents the information about a slice of Contexts.
+//
+// Commit.status.contexts is a plain list rather than a connection, so this is always the complete
+// set of classic commit statuses — there is nothing to paginate.
 type NodeStatus struct {
 	Contexts []Context
 }
@@ -64,15 +67,43 @@ type EdgeParent struct {
 	Node EdgeNode
 }
 
-// StatusCheckRollupContexts represents the information about the status check of roullup contexts
+// RollupStatusContext is the StatusContext member of the statusCheckRollup contexts union: a
+// classic commit status, as reported through the rollup.
+type RollupStatusContext struct {
+	Context githubv4.String
+	State   githubv4.String
+}
+
+// RollupCheckRun is the CheckRun member of the statusCheckRollup contexts union.
+type RollupCheckRun struct {
+	Name       githubv4.String
+	Status     githubv4.String
+	Conclusion githubv4.String
+}
+
+// RollupContext is one entry of statusCheckRollup.contexts, a union of StatusContext and CheckRun.
+// Typename says which member is populated.
+type RollupContext struct {
+	Typename      githubv4.String     `graphql:"__typename"`
+	StatusContext RollupStatusContext `graphql:"... on StatusContext"`
+	CheckRun      RollupCheckRun      `graphql:"... on CheckRun"`
+}
+
+// StatusCheckRollupContexts represents the information about the status check of rollup contexts.
+//
+// This is where check runs are read from. GitHub returns the latest run per check name here, so
+// re-runs of the same check arrive as one entry rather than one per attempt, and the list is flat
+// rather than grouped by suite.
 type StatusCheckRollupContexts struct {
 	TotalCount githubv4.Int
+	PageInfo   PageInfo
+	Nodes      []RollupContext
 }
 
 // StatusCheckRollup represents the information about the status check of rollup
 type StatusCheckRollup struct {
 	State    githubv4.String
-	Contexts StatusCheckRollupContexts `graphql:"contexts(first: $parentsNumber)"`
+	Contexts StatusCheckRollupContexts `graphql:"contexts(first: $contextsNumber)"`
 }
 
 // Author represents the information about the commit author
@@ -93,7 +124,7 @@ type EdgeRootNode struct {
 	AuthoredDate      githubv4.DateTime
 	Author            Author
 	StatusCheckRollup StatusCheckRollup
-	CheckSuites       CheckSuites `graphql:"checkSuites(first: 20)"`
+	CheckSuites       CheckSuites `graphql:"checkSuites(first: $checkSuitesNumber)"`
 	Status            NodeStatus
 }
 
@@ -130,4 +161,28 @@ type Repository struct {
 // Query represents the information obtained in a Github Query
 type Query struct {
 	Repository Repository `graphql:"repository(owner: $owner, name: $name)"`
+}
+
+// CommitContextsQuery fetches one further page of a single commit's status-check rollup contexts.
+type CommitContextsQuery struct {
+	Repository struct {
+		Object struct {
+			Commit struct {
+				StatusCheckRollup struct {
+					Contexts StatusCheckRollupContexts `graphql:"contexts(first: $contextsNumber, after: $contextsAfter)"`
+				}
+			} `graphql:"... on Commit"`
+		} `graphql:"object(oid: $oid)"`
+	} `graphql:"repository(owner: $owner, name: $name)"`
+}
+
+// CommitSuitesQuery fetches one further page of a single commit's check suites.
+type CommitSuitesQuery struct {
+	Repository struct {
+		Object struct {
+			Commit struct {
+				CheckSuites CheckSuites `graphql:"checkSuites(first: $checkSuitesNumber, after: $suitesAfter)"`
+			} `graphql:"... on Commit"`
+		} `graphql:"object(oid: $oid)"`
+	} `graphql:"repository(owner: $owner, name: $name)"`
 }

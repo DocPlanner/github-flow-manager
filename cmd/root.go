@@ -13,12 +13,15 @@ import (
 )
 
 var (
-	commitsNumber *int
-	githubToken   *string
-	force         *bool
-	verbose       *bool
-	dryRun        *bool
-	separator     *string
+	commitsNumber       *int
+	contextsNumber      *int
+	checkSuitesNumber   *int
+	githubToken         *string
+	force               *bool
+	verbose             *bool
+	dryRun              *bool
+	separator           *string
+	acceptSkippedChecks *bool
 )
 
 const (
@@ -68,7 +71,7 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 			*githubToken = os.Getenv("GITHUB_TOKEN")
 		}
 
-		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *commitsNumber, *force, *dryRun)
+		results, err := flow_manager.Manage(*githubToken, owner, repo, sourceBranch, destinationBranch, expression, specificChecksNames, *separator, *acceptSkippedChecks, *contextsNumber, *checkSuitesNumber, *commitsNumber, *force, *dryRun)
 		if err != nil {
 			fmt.Println(err.Error())
 			os.Exit(1)
@@ -105,6 +108,21 @@ If a SPECIFIC_COMMIT_CHECK_NAME is specified, the StatusSuccess will be calculat
 
 		table.Render()
 
+		// Without this, a commit held back by its required checks looks
+		// identical to one held back by the expression, which makes a stalled
+		// promotion very hard to diagnose from the job log alone.
+		for _, res := range results {
+			c := res.Commit
+			if c.StatusSuccess || len(c.ChecksSummary) == 0 {
+				continue
+			}
+
+			fmt.Println("Required checks not satisfied for " + c.SHA + ":")
+			for _, line := range c.ChecksSummary {
+				fmt.Println("\t" + line)
+			}
+		}
+
 		endingMessage := "THERE IS NO COMMITS PASSING EVALUATION"
 		if results[len(results)-1].Result {
 			endingMessage = "NO MORE COMMITS WERE EXAMINED BECAUSE LAST ONE EVALUATED SUCCESSFULLY"
@@ -127,4 +145,7 @@ func init() {
 	verbose = rootCmd.Flags().BoolP("verbose", "v", false, "Print table with commits evaluation status")
 	dryRun = rootCmd.Flags().BoolP("dry-run", "d", false, "Don't modify repository")
 	separator = rootCmd.Flags().StringP("separator", "s", ",", "Set string separator of status checks")
+	contextsNumber = rootCmd.Flags().Int("contexts-number", 50, "Status checks to fetch per commit in the first page (>0, <=100). Later pages are fetched on demand, so this trades requests against page size rather than dropping checks")
+	checkSuitesNumber = rootCmd.Flags().Int("check-suites-number", 50, "Check suites to fetch per commit in the first page (>0, <=100). Same trade-off as --contexts-number")
+	acceptSkippedChecks = rootCmd.Flags().Bool("accept-skipped-checks", false, "Accept a required check GitHub reports as SKIPPED as satisfied (off by default: only SUCCESS satisfies a required check)")
 }

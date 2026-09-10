@@ -19,3 +19,9 @@
 
 # Generated binary files
 bin
+
+# Promotion-verdict baselines (see testdata/baseline/README.md). Recorded output embeds commit
+# messages, author names and branch names; for private repositories that must not land in this
+# public repo. The harness is tracked, the repo list and the recordings are not.
+testdata/baseline/consumers.tsv
+testdata/baseline/*/

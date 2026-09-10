@@ -1,0 +1,23 @@
+# Copy to consumers.tsv (gitignored) and fill in with your own repos.
+#
+# One row per repository whose promotion verdict you want to pin, tab-separated:
+#
+#   repo<TAB>source<TAB>destination<TAB>status_check_names
+#
+# `status_check_names` should be exactly what you pass to github-flow-manager in production,
+# so the baseline reflects real configuration rather than a guess.
+#
+# `destination` should NOT be your production destination branch. If source and destination
+# already point at the same commit — the normal state right after a promotion — GFM prints
+# "IS ALREADY IN <branch> branch" and exits before evaluating a single check, so the recording
+# captures nothing. Pick instead any branch that is *not* an ancestor of the source branch
+# (an old feature branch works): GFM then evaluates the whole --commits-number window. Combined
+# with the unsatisfiable expression record.sh uses, nothing is ever promoted.
+#
+# Verify a row is useful by checking its output has as many commit rows as --commits-number.
+#
+# consumers.tsv is gitignored on purpose: recorded output embeds commit messages, author names
+# and branch names, which for private repositories must not be committed to a public repo.
+
+example-app	develop	some-old-feature-branch	Continuous Integration
+other-app	develop	some-old-feature-branch	unit-tests,publish-image / publish-image-example
