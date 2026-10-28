@@ -13,13 +13,13 @@ permissions:
 jobs:
   static-checks:
     name: Static Checks
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v2
       - name: Configure python
         uses: actions/setup-python@v2.3.1
         with:
-          python-version: '3.9'
+          python-version: '3.14'
       - name: Configure Go
         uses: actions/setup-go@v2
         with:
@@ -33,7 +33,7 @@ jobs:
 
   unit-tests:
     name: Unit Tests
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v2
       - name: Configure Go
